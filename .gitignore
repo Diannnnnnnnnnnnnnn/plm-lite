@@ -1,0 +1,28 @@
+# Java / Spring Boot
+target/
+*.jar
+*.war
+*.iml
+*.class
+/.idea/
+/.mvn/
+/.gradle/
+build/
+
+# Node / React
+node_modules/
+build/
+dist/
+.env
+npm-debug.log
+yarn-error.log
+
+# VS Code
+.vscode/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log

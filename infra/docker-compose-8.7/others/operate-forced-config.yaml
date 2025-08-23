@@ -1,0 +1,27 @@
+# 完全禁用Spring Security的核武器级配置
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  security:
+    enabled: false
+    filter:
+      dispatcher-types: []
+
+camunda:
+  operate:
+    auth:
+      enabled: false
+    identity:
+      enabled: false
+    security:
+      enabled: false
+
+management:
+  security:
+    enabled: false
+    user:
+      name: ''
+      password: ''
