@@ -1,0 +1,1 @@
+java -jar structurizr-lite.war --server.port=8888 --workspace="D:\Program Files\structurizr-project"

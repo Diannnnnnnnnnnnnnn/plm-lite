@@ -1,0 +1,1766 @@
+{
+  "configuration" : { },
+  "description" : "Description",
+  "documentation" : { },
+  "id" : 1,
+  "lastModifiedAgent" : "structurizr-ui",
+  "lastModifiedDate" : "2025-08-23T14:38:09Z",
+  "model" : {
+    "people" : [ {
+      "description" : "A user of the PLM Lite System (Engineer, Approver, Admin, etc.)",
+      "id" : "1",
+      "location" : "Unspecified",
+      "name" : "User",
+      "properties" : {
+        "structurizr.dsl.identifier" : "user"
+      },
+      "relationships" : [ {
+        "description" : "Uses web app",
+        "destinationId" : "78",
+        "id" : "105",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    } ],
+    "softwareSystems" : [ {
+      "containers" : [ {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "4",
+          "name" : "UserController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "usercontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "5",
+            "id" : "7",
+            "sourceId" : "4",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "5",
+          "name" : "UserServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "userservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Reads/Writes data",
+            "destinationId" : "6",
+            "id" : "8",
+            "sourceId" : "5",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "6",
+          "name" : "UserRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "userrepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Spring Data JPA + Neo4j"
+        } ],
+        "description" : "Manages users, authentication, roles, permissions",
+        "documentation" : { },
+        "id" : "3",
+        "name" : "UserService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "userservice"
+        },
+        "relationships" : [ {
+          "description" : "Reads/Writes user data",
+          "destinationId" : "72",
+          "id" : "80",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Caches user sessions",
+          "destinationId" : "74",
+          "id" : "82",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Manages user-task relationships",
+          "destinationId" : "73",
+          "id" : "84",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "109",
+          "sourceId" : "3",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MySQL, Neo4j, Redis"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "10",
+          "name" : "DocumentController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "documentcontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "11",
+            "id" : "13",
+            "sourceId" : "10",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "11",
+          "name" : "DocumentServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "documentservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Reads/Writes metadata",
+            "destinationId" : "12",
+            "id" : "14",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "12",
+          "name" : "DocumentRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "documentrepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA, Neo4j, Elasticsearch"
+        } ],
+        "description" : "Manages documents, metadata, versions, links to parts and changes",
+        "documentation" : { },
+        "id" : "9",
+        "name" : "DocumentService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "documentservice"
+        },
+        "relationships" : [ {
+          "description" : "Stores and fetches files",
+          "destinationId" : "33",
+          "id" : "57",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Starts approval workflow",
+          "destinationId" : "41",
+          "id" : "58",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores metadata",
+          "destinationId" : "72",
+          "id" : "86",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Indexes document data",
+          "destinationId" : "75",
+          "id" : "87",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Links to parts and changes",
+          "destinationId" : "73",
+          "id" : "89",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "111",
+          "sourceId" : "9",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MySQL, Neo4j, Elasticsearch, MinIO"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "16",
+          "name" : "TaskController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "taskcontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "17",
+            "id" : "19",
+            "sourceId" : "16",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "17",
+          "name" : "TaskServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "taskservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Reads/Writes task data",
+            "destinationId" : "18",
+            "id" : "20",
+            "sourceId" : "17",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "18",
+          "name" : "TaskRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "taskrepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA + Neo4j + Elasticsearch"
+        } ],
+        "description" : "Handles tasks for document/change approvals",
+        "documentation" : { },
+        "id" : "15",
+        "name" : "TaskService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "taskservice"
+        },
+        "relationships" : [ {
+          "description" : "Notifies approvers",
+          "destinationId" : "3",
+          "id" : "68",
+          "sourceId" : "15",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores task data",
+          "destinationId" : "72",
+          "id" : "90",
+          "sourceId" : "15",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Indexes tasks",
+          "destinationId" : "75",
+          "id" : "91",
+          "sourceId" : "15",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Links tasks with users and workflow instances",
+          "destinationId" : "73",
+          "id" : "92",
+          "sourceId" : "15",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "114",
+          "sourceId" : "15",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MySQL, Neo4j, Elasticsearch"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "22",
+          "name" : "BOMController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "bomcontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "23",
+            "id" : "25",
+            "sourceId" : "22",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "23",
+          "name" : "BOMServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "bomservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Reads/Writes part and BOM data",
+            "destinationId" : "24",
+            "id" : "26",
+            "sourceId" : "23",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "24",
+          "name" : "BOMRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "bomrepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA + Neo4j + Elasticsearch"
+        } ],
+        "description" : "Manages parts and BOM structures",
+        "documentation" : { },
+        "id" : "21",
+        "name" : "BOMService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "bomservice"
+        },
+        "relationships" : [ {
+          "description" : "References linked documents",
+          "destinationId" : "9",
+          "id" : "71",
+          "sourceId" : "21",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores parts/BOMs",
+          "destinationId" : "72",
+          "id" : "93",
+          "sourceId" : "21",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Indexes parts/BOMs",
+          "destinationId" : "75",
+          "id" : "94",
+          "sourceId" : "21",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Links parts with documents/changes",
+          "destinationId" : "73",
+          "id" : "95",
+          "sourceId" : "21",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "112",
+          "sourceId" : "21",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MySQL, Neo4j, Elasticsearch"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "28",
+          "name" : "ChangeController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "changecontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "29",
+            "id" : "31",
+            "sourceId" : "28",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "29",
+          "name" : "ChangeServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "changeservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Reads/Writes change data",
+            "destinationId" : "30",
+            "id" : "32",
+            "sourceId" : "29",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "30",
+          "name" : "ChangeRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "changerepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA + Neo4j + Elasticsearch"
+        } ],
+        "description" : "Handles Engineering Change Requests (ECRs) and Orders (ECOs)",
+        "documentation" : { },
+        "id" : "27",
+        "name" : "ChangeService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "changeservice"
+        },
+        "relationships" : [ {
+          "description" : "References affected documents",
+          "destinationId" : "9",
+          "id" : "69",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        }, {
+          "description" : "References affected parts/BOMs",
+          "destinationId" : "21",
+          "id" : "70",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores change request data",
+          "destinationId" : "72",
+          "id" : "96",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Indexes changes",
+          "destinationId" : "75",
+          "id" : "97",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Links changes to parts/documents",
+          "destinationId" : "73",
+          "id" : "98",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "113",
+          "sourceId" : "27",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MySQL, Neo4j, Elasticsearch"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "34",
+          "name" : "FileController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "filecontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "35",
+            "id" : "38",
+            "sourceId" : "34",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "35",
+          "name" : "FileServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "fileservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Stores/Retrieves file metadata",
+            "destinationId" : "36",
+            "id" : "39",
+            "sourceId" : "35",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Stores/Retrieves file contents",
+            "destinationId" : "37",
+            "id" : "40",
+            "sourceId" : "35",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "36",
+          "name" : "FileRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "filerepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA + MySQL"
+        }, {
+          "documentation" : { },
+          "id" : "37",
+          "name" : "FileStorageAdapter",
+          "properties" : {
+            "structurizr.dsl.identifier" : "filestorageadapter"
+          },
+          "tags" : "Element,Component",
+          "technology" : "MinIO Client"
+        } ],
+        "description" : "Stores and retrieves binary files",
+        "documentation" : { },
+        "id" : "33",
+        "name" : "FileStorageService",
+        "properties" : {
+          "structurizr.dsl.identifier" : "filestorageservice"
+        },
+        "relationships" : [ {
+          "description" : "Stores file metadata",
+          "destinationId" : "72",
+          "id" : "99",
+          "sourceId" : "33",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores files",
+          "destinationId" : "76",
+          "id" : "100",
+          "sourceId" : "33",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Registers with",
+          "destinationId" : "79",
+          "id" : "115",
+          "sourceId" : "33",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Boot, MinIO, MySQL"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "42",
+          "name" : "WorkflowController",
+          "properties" : {
+            "structurizr.dsl.identifier" : "workflowcontroller"
+          },
+          "relationships" : [ {
+            "description" : "Calls business logic",
+            "destinationId" : "43",
+            "id" : "46",
+            "sourceId" : "42",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "documentation" : { },
+          "id" : "43",
+          "name" : "WorkflowServiceLogic",
+          "properties" : {
+            "structurizr.dsl.identifier" : "workflowservicelogic"
+          },
+          "relationships" : [ {
+            "description" : "Stores workflow state",
+            "destinationId" : "44",
+            "id" : "47",
+            "sourceId" : "43",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Executes workflows",
+            "destinationId" : "45",
+            "id" : "48",
+            "sourceId" : "43",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Business Logic"
+        }, {
+          "documentation" : { },
+          "id" : "44",
+          "name" : "WorkflowRepository",
+          "properties" : {
+            "structurizr.dsl.identifier" : "workflowrepository"
+          },
+          "tags" : "Element,Component",
+          "technology" : "JPA + MySQL"
+        }, {
+          "documentation" : { },
+          "id" : "45",
+          "name" : "WorkflowEngineAdapter",
+          "properties" : {
+            "structurizr.dsl.identifier" : "workflowengineadapter"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Camunda/Zeebe/Activiti Client"
+        } ],
+        "description" : "Handles workflow logic for approvals",
+        "documentation" : { },
+        "id" : "41",
+        "name" : "WorkflowOrchestrator",
+        "properties" : {
+          "structurizr.dsl.identifier" : "workfloworchestrator"
+        },
+        "relationships" : [ {
+          "description" : "Creates approval tasks",
+          "destinationId" : "15",
+          "id" : "59",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Reads document metadata",
+          "destinationId" : "9",
+          "id" : "60",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Reads change request data",
+          "destinationId" : "27",
+          "id" : "61",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Stores workflow state (Zeebe tables)",
+          "destinationId" : "72",
+          "id" : "102",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Sends events",
+          "destinationId" : "77",
+          "id" : "103",
+          "sourceId" : "41",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Camunda Zeebe or Activiti, MySQL"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "50",
+          "name" : "SecurityFilter",
+          "properties" : {
+            "structurizr.dsl.identifier" : "securityfilter"
+          },
+          "relationships" : [ {
+            "description" : "Filters requests before routing",
+            "destinationId" : "51",
+            "id" : "52",
+            "sourceId" : "50",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "JWT/Auth Filter"
+        }, {
+          "documentation" : { },
+          "id" : "51",
+          "name" : "RouteHandler",
+          "properties" : {
+            "structurizr.dsl.identifier" : "routehandler"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Spring Cloud Gateway Routes"
+        } ],
+        "description" : "Routes API requests to appropriate services",
+        "documentation" : { },
+        "id" : "49",
+        "name" : "APIGateway",
+        "properties" : {
+          "structurizr.dsl.identifier" : "apigateway"
+        },
+        "relationships" : [ {
+          "description" : "Proxies user requests",
+          "destinationId" : "3",
+          "id" : "62",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Proxies document requests",
+          "destinationId" : "9",
+          "id" : "63",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Proxies change requests",
+          "destinationId" : "27",
+          "id" : "64",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Proxies part/BOM requests",
+          "destinationId" : "21",
+          "id" : "65",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Proxies task requests",
+          "destinationId" : "15",
+          "id" : "66",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        }, {
+          "description" : "Proxies workflow requests",
+          "destinationId" : "41",
+          "id" : "67",
+          "sourceId" : "49",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container,Service",
+        "technology" : "Spring Cloud Gateway"
+      }, {
+        "components" : [ {
+          "documentation" : { },
+          "id" : "54",
+          "name" : "UIComponent",
+          "properties" : {
+            "structurizr.dsl.identifier" : "uicomponent"
+          },
+          "relationships" : [ {
+            "description" : "Calls backend APIs",
+            "destinationId" : "55",
+            "id" : "56",
+            "sourceId" : "54",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "React Components"
+        }, {
+          "documentation" : { },
+          "id" : "55",
+          "name" : "APIClient",
+          "properties" : {
+            "structurizr.dsl.identifier" : "apiclient"
+          },
+          "tags" : "Element,Component",
+          "technology" : "Axios/Fetch"
+        } ],
+        "description" : "User Interface for interacting with the system",
+        "documentation" : { },
+        "id" : "53",
+        "name" : "ReactFrontend",
+        "properties" : {
+          "structurizr.dsl.identifier" : "reactfrontend"
+        },
+        "tags" : "Element,Container,Frontend",
+        "technology" : "React"
+      } ],
+      "description" : "Product Lifecycle Management System for managing parts, documents, changes, workflows",
+      "documentation" : { },
+      "id" : "2",
+      "location" : "Unspecified",
+      "name" : "PLM Lite System",
+      "properties" : {
+        "structurizr.dsl.identifier" : "plmlite"
+      },
+      "relationships" : [ {
+        "description" : "Reads/Writes user data",
+        "destinationId" : "72",
+        "id" : "81",
+        "linkedRelationshipId" : "80",
+        "sourceId" : "2"
+      }, {
+        "description" : "Caches user sessions",
+        "destinationId" : "74",
+        "id" : "83",
+        "linkedRelationshipId" : "82",
+        "sourceId" : "2"
+      }, {
+        "description" : "Manages user-task relationships",
+        "destinationId" : "73",
+        "id" : "85",
+        "linkedRelationshipId" : "84",
+        "sourceId" : "2"
+      }, {
+        "description" : "Indexes document data",
+        "destinationId" : "75",
+        "id" : "88",
+        "linkedRelationshipId" : "87",
+        "sourceId" : "2"
+      }, {
+        "description" : "Stores files",
+        "destinationId" : "76",
+        "id" : "101",
+        "linkedRelationshipId" : "100",
+        "sourceId" : "2"
+      }, {
+        "description" : "Sends events",
+        "destinationId" : "77",
+        "id" : "104",
+        "linkedRelationshipId" : "103",
+        "sourceId" : "2"
+      }, {
+        "description" : "Registers with",
+        "destinationId" : "79",
+        "id" : "110",
+        "linkedRelationshipId" : "109",
+        "sourceId" : "2"
+      } ],
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Relational DB for structured service data",
+      "documentation" : { },
+      "id" : "72",
+      "location" : "Unspecified",
+      "name" : "MySQL",
+      "properties" : {
+        "structurizr.dsl.identifier" : "mysql"
+      },
+      "tags" : "Element,Software System,Database"
+    }, {
+      "description" : "Graph DB for entity relationships",
+      "documentation" : { },
+      "id" : "73",
+      "location" : "Unspecified",
+      "name" : "Neo4j",
+      "properties" : {
+        "structurizr.dsl.identifier" : "neo4j"
+      },
+      "tags" : "Element,Software System,Database"
+    }, {
+      "description" : "Cache for user session data",
+      "documentation" : { },
+      "id" : "74",
+      "location" : "Unspecified",
+      "name" : "Redis",
+      "properties" : {
+        "structurizr.dsl.identifier" : "redis"
+      },
+      "tags" : "Element,Software System,Cache"
+    }, {
+      "description" : "Search engine for documents, parts, tasks",
+      "documentation" : { },
+      "id" : "75",
+      "location" : "Unspecified",
+      "name" : "Elasticsearch",
+      "properties" : {
+        "structurizr.dsl.identifier" : "elasticsearch"
+      },
+      "tags" : "Element,Software System,Search Engine"
+    }, {
+      "description" : "Object storage for files",
+      "documentation" : { },
+      "id" : "76",
+      "location" : "Unspecified",
+      "name" : "MinIO",
+      "properties" : {
+        "structurizr.dsl.identifier" : "minio"
+      },
+      "tags" : "Element,Software System,Storage"
+    }, {
+      "description" : "Message broker for inter-service events",
+      "documentation" : { },
+      "id" : "77",
+      "location" : "Unspecified",
+      "name" : "RabbitMQ",
+      "properties" : {
+        "structurizr.dsl.identifier" : "rabbitmq"
+      },
+      "tags" : "Element,Software System,Message Broker"
+    }, {
+      "description" : "Reverse proxy serving React frontend and proxying API traffic",
+      "documentation" : { },
+      "id" : "78",
+      "location" : "Unspecified",
+      "name" : "Nginx",
+      "properties" : {
+        "structurizr.dsl.identifier" : "nginx"
+      },
+      "relationships" : [ {
+        "description" : "Proxies requests to PLM Lite System",
+        "destinationId" : "49",
+        "id" : "106",
+        "sourceId" : "78",
+        "tags" : "Relationship"
+      }, {
+        "description" : "Proxies requests to PLM Lite System",
+        "destinationId" : "2",
+        "id" : "107",
+        "linkedRelationshipId" : "106",
+        "sourceId" : "78"
+      }, {
+        "description" : "Serves frontend",
+        "destinationId" : "53",
+        "id" : "108",
+        "sourceId" : "78",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System,Proxy"
+    }, {
+      "description" : "Service registry for PLM Lite microservices (discovery and registration).",
+      "documentation" : { },
+      "id" : "79",
+      "location" : "Unspecified",
+      "name" : "EurekaServer",
+      "properties" : {
+        "structurizr.dsl.identifier" : "eurekaserver"
+      },
+      "tags" : "Element,Software System,Spring Cloud Netflix Eureka"
+    } ]
+  },
+  "name" : "Name",
+  "properties" : {
+    "structurizr.dsl" : "d29ya3NwYWNlIHsNCg0KICAgIG1vZGVsIHsNCiAgICAgICAgLy8gUGVyc29uDQogICAgICAgIHVzZXIgPSBwZXJzb24gIlVzZXIiIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJBIHVzZXIgb2YgdGhlIFBMTSBMaXRlIFN5c3RlbSAoRW5naW5lZXIsIEFwcHJvdmVyLCBBZG1pbiwgZXRjLikiDQogICAgICAgIH0NCg0KICAgICAgICAvLyBQTE0gTGl0ZSBTeXN0ZW0NCiAgICAgICAgcGxtTGl0ZSA9IHNvZnR3YXJlU3lzdGVtICJQTE0gTGl0ZSBTeXN0ZW0iIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJQcm9kdWN0IExpZmVjeWNsZSBNYW5hZ2VtZW50IFN5c3RlbSBmb3IgbWFuYWdpbmcgcGFydHMsIGRvY3VtZW50cywgY2hhbmdlcywgd29ya2Zsb3dzIg0KDQogICAgICAgICAgICAvLyBVc2VyU2VydmljZQ0KICAgICAgICAgICAgdXNlclNlcnZpY2UgPSBjb250YWluZXIgIlVzZXJTZXJ2aWNlIiB7DQogICAgICAgICAgICAgICAgZGVzY3JpcHRpb24gIk1hbmFnZXMgdXNlcnMsIGF1dGhlbnRpY2F0aW9uLCByb2xlcywgcGVybWlzc2lvbnMiDQogICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiU3ByaW5nIEJvb3QsIE15U1FMLCBOZW80aiwgUmVkaXMiDQogICAgICAgICAgICAgICAgdGFncyAiU2VydmljZSINCg0KICAgICAgICAgICAgICAgIHVzZXJDb250cm9sbGVyID0gY29tcG9uZW50ICJVc2VyQ29udHJvbGxlciIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJSRVNUIENvbnRyb2xsZXIiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIHVzZXJTZXJ2aWNlTG9naWMgPSBjb21wb25lbnQgIlVzZXJTZXJ2aWNlTG9naWMiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQnVzaW5lc3MgTG9naWMiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIHVzZXJSZXBvc2l0b3J5ID0gY29tcG9uZW50ICJVc2VyUmVwb3NpdG9yeSIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgRGF0YSBKUEEgKyBOZW80aiINCiAgICAgICAgICAgICAgICB9DQoNCiAgICAgICAgICAgICAgICB1c2VyQ29udHJvbGxlciAtPiB1c2VyU2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICB1c2VyU2VydmljZUxvZ2ljIC0+IHVzZXJSZXBvc2l0b3J5ICJSZWFkcy9Xcml0ZXMgZGF0YSINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gRG9jdW1lbnRTZXJ2aWNlDQogICAgICAgICAgICBkb2N1bWVudFNlcnZpY2UgPSBjb250YWluZXIgIkRvY3VtZW50U2VydmljZSIgew0KICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uICJNYW5hZ2VzIGRvY3VtZW50cywgbWV0YWRhdGEsIHZlcnNpb25zLCBsaW5rcyB0byBwYXJ0cyBhbmQgY2hhbmdlcyINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgQm9vdCwgTXlTUUwsIE5lbzRqLCBFbGFzdGljc2VhcmNoLCBNaW5JTyINCiAgICAgICAgICAgICAgICB0YWdzICJTZXJ2aWNlIg0KDQogICAgICAgICAgICAgICAgZG9jdW1lbnRDb250cm9sbGVyID0gY29tcG9uZW50ICJEb2N1bWVudENvbnRyb2xsZXIiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiUkVTVCBDb250cm9sbGVyIg0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBkb2N1bWVudFNlcnZpY2VMb2dpYyA9IGNvbXBvbmVudCAiRG9jdW1lbnRTZXJ2aWNlTG9naWMiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQnVzaW5lc3MgTG9naWMiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIGRvY3VtZW50UmVwb3NpdG9yeSA9IGNvbXBvbmVudCAiRG9jdW1lbnRSZXBvc2l0b3J5IiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIkpQQSwgTmVvNGosIEVsYXN0aWNzZWFyY2giDQogICAgICAgICAgICAgICAgfQ0KDQogICAgICAgICAgICAgICAgZG9jdW1lbnRDb250cm9sbGVyIC0+IGRvY3VtZW50U2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICBkb2N1bWVudFNlcnZpY2VMb2dpYyAtPiBkb2N1bWVudFJlcG9zaXRvcnkgIlJlYWRzL1dyaXRlcyBtZXRhZGF0YSINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gVGFza1NlcnZpY2UNCiAgICAgICAgICAgIHRhc2tTZXJ2aWNlID0gY29udGFpbmVyICJUYXNrU2VydmljZSIgew0KICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uICJIYW5kbGVzIHRhc2tzIGZvciBkb2N1bWVudC9jaGFuZ2UgYXBwcm92YWxzIg0KICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIlNwcmluZyBCb290LCBNeVNRTCwgTmVvNGosIEVsYXN0aWNzZWFyY2giDQogICAgICAgICAgICAgICAgdGFncyAiU2VydmljZSINCg0KICAgICAgICAgICAgICAgIHRhc2tDb250cm9sbGVyID0gY29tcG9uZW50ICJUYXNrQ29udHJvbGxlciIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJSRVNUIENvbnRyb2xsZXIiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIHRhc2tTZXJ2aWNlTG9naWMgPSBjb21wb25lbnQgIlRhc2tTZXJ2aWNlTG9naWMiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQnVzaW5lc3MgTG9naWMiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIHRhc2tSZXBvc2l0b3J5ID0gY29tcG9uZW50ICJUYXNrUmVwb3NpdG9yeSIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJKUEEgKyBOZW80aiArIEVsYXN0aWNzZWFyY2giDQogICAgICAgICAgICAgICAgfQ0KDQogICAgICAgICAgICAgICAgdGFza0NvbnRyb2xsZXIgLT4gdGFza1NlcnZpY2VMb2dpYyAiQ2FsbHMgYnVzaW5lc3MgbG9naWMiDQogICAgICAgICAgICAgICAgdGFza1NlcnZpY2VMb2dpYyAtPiB0YXNrUmVwb3NpdG9yeSAiUmVhZHMvV3JpdGVzIHRhc2sgZGF0YSINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gQk9NU2VydmljZQ0KICAgICAgICAgICAgYm9tU2VydmljZSA9IGNvbnRhaW5lciAiQk9NU2VydmljZSIgew0KICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uICJNYW5hZ2VzIHBhcnRzIGFuZCBCT00gc3RydWN0dXJlcyINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgQm9vdCwgTXlTUUwsIE5lbzRqLCBFbGFzdGljc2VhcmNoIg0KICAgICAgICAgICAgICAgIHRhZ3MgIlNlcnZpY2UiDQoNCiAgICAgICAgICAgICAgICBib21Db250cm9sbGVyID0gY29tcG9uZW50ICJCT01Db250cm9sbGVyIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIlJFU1QgQ29udHJvbGxlciINCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgYm9tU2VydmljZUxvZ2ljID0gY29tcG9uZW50ICJCT01TZXJ2aWNlTG9naWMiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQnVzaW5lc3MgTG9naWMiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIGJvbVJlcG9zaXRvcnkgPSBjb21wb25lbnQgIkJPTVJlcG9zaXRvcnkiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiSlBBICsgTmVvNGogKyBFbGFzdGljc2VhcmNoIg0KICAgICAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgICAgIGJvbUNvbnRyb2xsZXIgLT4gYm9tU2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICBib21TZXJ2aWNlTG9naWMgLT4gYm9tUmVwb3NpdG9yeSAiUmVhZHMvV3JpdGVzIHBhcnQgYW5kIEJPTSBkYXRhIg0KICAgICAgICAgICAgfQ0KDQogICAgICAgICAgICAvLyBDaGFuZ2VTZXJ2aWNlDQogICAgICAgICAgICBjaGFuZ2VTZXJ2aWNlID0gY29udGFpbmVyICJDaGFuZ2VTZXJ2aWNlIiB7DQogICAgICAgICAgICAgICAgZGVzY3JpcHRpb24gIkhhbmRsZXMgRW5naW5lZXJpbmcgQ2hhbmdlIFJlcXVlc3RzIChFQ1JzKSBhbmQgT3JkZXJzIChFQ09zKSINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgQm9vdCwgTXlTUUwsIE5lbzRqLCBFbGFzdGljc2VhcmNoIg0KICAgICAgICAgICAgICAgIHRhZ3MgIlNlcnZpY2UiDQoNCiAgICAgICAgICAgICAgICBjaGFuZ2VDb250cm9sbGVyID0gY29tcG9uZW50ICJDaGFuZ2VDb250cm9sbGVyIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIlJFU1QgQ29udHJvbGxlciINCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgY2hhbmdlU2VydmljZUxvZ2ljID0gY29tcG9uZW50ICJDaGFuZ2VTZXJ2aWNlTG9naWMiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQnVzaW5lc3MgTG9naWMiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIGNoYW5nZVJlcG9zaXRvcnkgPSBjb21wb25lbnQgIkNoYW5nZVJlcG9zaXRvcnkiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiSlBBICsgTmVvNGogKyBFbGFzdGljc2VhcmNoIg0KICAgICAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgICAgIGNoYW5nZUNvbnRyb2xsZXIgLT4gY2hhbmdlU2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICBjaGFuZ2VTZXJ2aWNlTG9naWMgLT4gY2hhbmdlUmVwb3NpdG9yeSAiUmVhZHMvV3JpdGVzIGNoYW5nZSBkYXRhIg0KICAgICAgICAgICAgfQ0KDQogICAgICAgICAgICAvLyBGaWxlU3RvcmFnZVNlcnZpY2UNCiAgICAgICAgICAgIGZpbGVTdG9yYWdlU2VydmljZSA9IGNvbnRhaW5lciAiRmlsZVN0b3JhZ2VTZXJ2aWNlIiB7DQogICAgICAgICAgICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyBhbmQgcmV0cmlldmVzIGJpbmFyeSBmaWxlcyINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgQm9vdCwgTWluSU8sIE15U1FMIg0KICAgICAgICAgICAgICAgIHRhZ3MgIlNlcnZpY2UiDQoNCiAgICAgICAgICAgICAgICBmaWxlQ29udHJvbGxlciA9IGNvbXBvbmVudCAiRmlsZUNvbnRyb2xsZXIiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiUkVTVCBDb250cm9sbGVyIg0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBmaWxlU2VydmljZUxvZ2ljID0gY29tcG9uZW50ICJGaWxlU2VydmljZUxvZ2ljIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIkJ1c2luZXNzIExvZ2ljIg0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBmaWxlUmVwb3NpdG9yeSA9IGNvbXBvbmVudCAiRmlsZVJlcG9zaXRvcnkiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiSlBBICsgTXlTUUwiDQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIGZpbGVTdG9yYWdlQWRhcHRlciA9IGNvbXBvbmVudCAiRmlsZVN0b3JhZ2VBZGFwdGVyIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIk1pbklPIENsaWVudCINCiAgICAgICAgICAgICAgICB9DQoNCiAgICAgICAgICAgICAgICBmaWxlQ29udHJvbGxlciAtPiBmaWxlU2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICBmaWxlU2VydmljZUxvZ2ljIC0+IGZpbGVSZXBvc2l0b3J5ICJTdG9yZXMvUmV0cmlldmVzIGZpbGUgbWV0YWRhdGEiDQogICAgICAgICAgICAgICAgZmlsZVNlcnZpY2VMb2dpYyAtPiBmaWxlU3RvcmFnZUFkYXB0ZXIgIlN0b3Jlcy9SZXRyaWV2ZXMgZmlsZSBjb250ZW50cyINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gV29ya2Zsb3dPcmNoZXN0cmF0b3INCiAgICAgICAgICAgIHdvcmtmbG93T3JjaGVzdHJhdG9yID0gY29udGFpbmVyICJXb3JrZmxvd09yY2hlc3RyYXRvciIgew0KICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uICJIYW5kbGVzIHdvcmtmbG93IGxvZ2ljIGZvciBhcHByb3ZhbHMiDQogICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQ2FtdW5kYSBaZWViZSBvciBBY3Rpdml0aSwgTXlTUUwiDQogICAgICAgICAgICAgICAgdGFncyAiU2VydmljZSINCg0KICAgICAgICAgICAgICAgIHdvcmtmbG93Q29udHJvbGxlciA9IGNvbXBvbmVudCAiV29ya2Zsb3dDb250cm9sbGVyIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIlJFU1QgQ29udHJvbGxlciINCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgd29ya2Zsb3dTZXJ2aWNlTG9naWMgPSBjb21wb25lbnQgIldvcmtmbG93U2VydmljZUxvZ2ljIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIkJ1c2luZXNzIExvZ2ljIg0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICB3b3JrZmxvd1JlcG9zaXRvcnkgPSBjb21wb25lbnQgIldvcmtmbG93UmVwb3NpdG9yeSIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJKUEEgKyBNeVNRTCINCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgd29ya2Zsb3dFbmdpbmVBZGFwdGVyID0gY29tcG9uZW50ICJXb3JrZmxvd0VuZ2luZUFkYXB0ZXIiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiQ2FtdW5kYS9aZWViZS9BY3Rpdml0aSBDbGllbnQiDQogICAgICAgICAgICAgICAgfQ0KDQogICAgICAgICAgICAgICAgd29ya2Zsb3dDb250cm9sbGVyIC0+IHdvcmtmbG93U2VydmljZUxvZ2ljICJDYWxscyBidXNpbmVzcyBsb2dpYyINCiAgICAgICAgICAgICAgICB3b3JrZmxvd1NlcnZpY2VMb2dpYyAtPiB3b3JrZmxvd1JlcG9zaXRvcnkgIlN0b3JlcyB3b3JrZmxvdyBzdGF0ZSINCiAgICAgICAgICAgICAgICB3b3JrZmxvd1NlcnZpY2VMb2dpYyAtPiB3b3JrZmxvd0VuZ2luZUFkYXB0ZXIgIkV4ZWN1dGVzIHdvcmtmbG93cyINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gQVBJIEdhdGV3YXkNCiAgICAgICAgICAgIGFwaUdhdGV3YXkgPSBjb250YWluZXIgIkFQSUdhdGV3YXkiIHsNCiAgICAgICAgICAgICAgICBkZXNjcmlwdGlvbiAiUm91dGVzIEFQSSByZXF1ZXN0cyB0byBhcHByb3ByaWF0ZSBzZXJ2aWNlcyINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJTcHJpbmcgQ2xvdWQgR2F0ZXdheSINCiAgICAgICAgICAgICAgICB0YWdzICJTZXJ2aWNlIg0KDQogICAgICAgICAgICAgICAgc2VjdXJpdHlGaWx0ZXIgPSBjb21wb25lbnQgIlNlY3VyaXR5RmlsdGVyIiB7DQogICAgICAgICAgICAgICAgICAgIHRlY2hub2xvZ3kgIkpXVC9BdXRoIEZpbHRlciINCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgcm91dGVIYW5kbGVyID0gY29tcG9uZW50ICJSb3V0ZUhhbmRsZXIiIHsNCiAgICAgICAgICAgICAgICAgICAgdGVjaG5vbG9neSAiU3ByaW5nIENsb3VkIEdhdGV3YXkgUm91dGVzIg0KICAgICAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgICAgIHNlY3VyaXR5RmlsdGVyIC0+IHJvdXRlSGFuZGxlciAiRmlsdGVycyByZXF1ZXN0cyBiZWZvcmUgcm91dGluZyINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gUmVhY3QgRnJvbnRlbmQNCiAgICAgICAgICAgIHJlYWN0RnJvbnRlbmQgPSBjb250YWluZXIgIlJlYWN0RnJvbnRlbmQiIHsNCiAgICAgICAgICAgICAgICBkZXNjcmlwdGlvbiAiVXNlciBJbnRlcmZhY2UgZm9yIGludGVyYWN0aW5nIHdpdGggdGhlIHN5c3RlbSINCiAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJSZWFjdCINCiAgICAgICAgICAgICAgICB0YWdzICJGcm9udGVuZCINCg0KICAgICAgICAgICAgICAgIHVpQ29tcG9uZW50ID0gY29tcG9uZW50ICJVSUNvbXBvbmVudCIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJSZWFjdCBDb21wb25lbnRzIg0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBhcGlDbGllbnQgPSBjb21wb25lbnQgIkFQSUNsaWVudCIgew0KICAgICAgICAgICAgICAgICAgICB0ZWNobm9sb2d5ICJBeGlvcy9GZXRjaCINCiAgICAgICAgICAgICAgICB9DQoNCiAgICAgICAgICAgICAgICB1aUNvbXBvbmVudCAtPiBhcGlDbGllbnQgIkNhbGxzIGJhY2tlbmQgQVBJcyINCiAgICAgICAgICAgIH0NCg0KICAgICAgICAgICAgLy8gQ29udGFpbmVyLXRvLWNvbnRhaW5lciByZWxhdGlvbnNoaXBzDQogICAgICAgICAgICBkb2N1bWVudFNlcnZpY2UgLT4gZmlsZVN0b3JhZ2VTZXJ2aWNlICJTdG9yZXMgYW5kIGZldGNoZXMgZmlsZXMiDQogICAgICAgICAgICBkb2N1bWVudFNlcnZpY2UgLT4gd29ya2Zsb3dPcmNoZXN0cmF0b3IgIlN0YXJ0cyBhcHByb3ZhbCB3b3JrZmxvdyINCiAgICAgICAgICAgIHdvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRhc2tTZXJ2aWNlICJDcmVhdGVzIGFwcHJvdmFsIHRhc2tzIg0KICAgICAgICAgICAgd29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gZG9jdW1lbnRTZXJ2aWNlICJSZWFkcyBkb2N1bWVudCBtZXRhZGF0YSINCiAgICAgICAgICAgIHdvcmtmbG93T3JjaGVzdHJhdG9yIC0+IGNoYW5nZVNlcnZpY2UgIlJlYWRzIGNoYW5nZSByZXF1ZXN0IGRhdGEiDQoNCiAgICAgICAgICAgIGFwaUdhdGV3YXkgLT4gdXNlclNlcnZpY2UgIlByb3hpZXMgdXNlciByZXF1ZXN0cyINCiAgICAgICAgICAgIGFwaUdhdGV3YXkgLT4gZG9jdW1lbnRTZXJ2aWNlICJQcm94aWVzIGRvY3VtZW50IHJlcXVlc3RzIg0KICAgICAgICAgICAgYXBpR2F0ZXdheSAtPiBjaGFuZ2VTZXJ2aWNlICJQcm94aWVzIGNoYW5nZSByZXF1ZXN0cyINCiAgICAgICAgICAgIGFwaUdhdGV3YXkgLT4gYm9tU2VydmljZSAiUHJveGllcyBwYXJ0L0JPTSByZXF1ZXN0cyINCiAgICAgICAgICAgIGFwaUdhdGV3YXkgLT4gdGFza1NlcnZpY2UgIlByb3hpZXMgdGFzayByZXF1ZXN0cyINCiAgICAgICAgICAgIGFwaUdhdGV3YXkgLT4gd29ya2Zsb3dPcmNoZXN0cmF0b3IgIlByb3hpZXMgd29ya2Zsb3cgcmVxdWVzdHMiDQoNCiAgICAgICAgICAgIHRhc2tTZXJ2aWNlIC0+IHVzZXJTZXJ2aWNlICJOb3RpZmllcyBhcHByb3ZlcnMiDQogICAgICAgICAgICBjaGFuZ2VTZXJ2aWNlIC0+IGRvY3VtZW50U2VydmljZSAiUmVmZXJlbmNlcyBhZmZlY3RlZCBkb2N1bWVudHMiDQogICAgICAgICAgICBjaGFuZ2VTZXJ2aWNlIC0+IGJvbVNlcnZpY2UgIlJlZmVyZW5jZXMgYWZmZWN0ZWQgcGFydHMvQk9NcyINCiAgICAgICAgICAgIGJvbVNlcnZpY2UgLT4gZG9jdW1lbnRTZXJ2aWNlICJSZWZlcmVuY2VzIGxpbmtlZCBkb2N1bWVudHMiDQogICAgICAgIH0NCg0KICAgICAgICAvLyBFeHRlcm5hbCBTeXN0ZW1zDQogICAgICAgIG15c3FsID0gc29mdHdhcmVTeXN0ZW0gIk15U1FMIiB7DQogICAgICAgICAgICBkZXNjcmlwdGlvbiAiUmVsYXRpb25hbCBEQiBmb3Igc3RydWN0dXJlZCBzZXJ2aWNlIGRhdGEiDQogICAgICAgICAgICB0YWdzICJEYXRhYmFzZSINCiAgICAgICAgfQ0KDQogICAgICAgIG5lbzRqID0gc29mdHdhcmVTeXN0ZW0gIk5lbzRqIiB7DQogICAgICAgICAgICBkZXNjcmlwdGlvbiAiR3JhcGggREIgZm9yIGVudGl0eSByZWxhdGlvbnNoaXBzIg0KICAgICAgICAgICAgdGFncyAiRGF0YWJhc2UiDQogICAgICAgIH0NCg0KICAgICAgICByZWRpcyA9IHNvZnR3YXJlU3lzdGVtICJSZWRpcyIgew0KICAgICAgICAgICAgZGVzY3JpcHRpb24gIkNhY2hlIGZvciB1c2VyIHNlc3Npb24gZGF0YSINCiAgICAgICAgICAgIHRhZ3MgIkNhY2hlIg0KICAgICAgICB9DQoNCiAgICAgICAgZWxhc3RpY3NlYXJjaCA9IHNvZnR3YXJlU3lzdGVtICJFbGFzdGljc2VhcmNoIiB7DQogICAgICAgICAgICBkZXNjcmlwdGlvbiAiU2VhcmNoIGVuZ2luZSBmb3IgZG9jdW1lbnRzLCBwYXJ0cywgdGFza3MiDQogICAgICAgICAgICB0YWdzICJTZWFyY2ggRW5naW5lIg0KICAgICAgICB9DQoNCiAgICAgICAgbWluaW8gPSBzb2Z0d2FyZVN5c3RlbSAiTWluSU8iIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJPYmplY3Qgc3RvcmFnZSBmb3IgZmlsZXMiDQogICAgICAgICAgICB0YWdzICJTdG9yYWdlIg0KICAgICAgICB9DQoNCiAgICAgICAgcmFiYml0bXEgPSBzb2Z0d2FyZVN5c3RlbSAiUmFiYml0TVEiIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJNZXNzYWdlIGJyb2tlciBmb3IgaW50ZXItc2VydmljZSBldmVudHMiDQogICAgICAgICAgICB0YWdzICJNZXNzYWdlIEJyb2tlciINCiAgICAgICAgfQ0KDQogICAgICAgIC8vIE5naW54IFJldmVyc2UgUHJveHkgKEluZGVwZW5kZW50IFN5c3RlbSkNCiAgICAgICAgbmdpbnggPSBzb2Z0d2FyZVN5c3RlbSAiTmdpbngiIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJSZXZlcnNlIHByb3h5IHNlcnZpbmcgUmVhY3QgZnJvbnRlbmQgYW5kIHByb3h5aW5nIEFQSSB0cmFmZmljIg0KICAgICAgICAgICAgdGFncyAiUHJveHkiDQogICAgICAgIH0NCg0KICAgICAgICAvLyBFdXJla2FTZXJ2ZXINCiAgICAgICAgZXVyZWthU2VydmVyID0gc29mdHdhcmVTeXN0ZW0gIkV1cmVrYVNlcnZlciIgew0KICAgICAgICAgICAgZGVzY3JpcHRpb24gIlNlcnZpY2UgcmVnaXN0cnkgZm9yIFBMTSBMaXRlIG1pY3Jvc2VydmljZXMgKGRpc2NvdmVyeSBhbmQgcmVnaXN0cmF0aW9uKS4iDQogICAgICAgICAgICB0YWdzICJTcHJpbmcgQ2xvdWQgTmV0ZmxpeCBFdXJla2EiDQogICAgICAgIH0NCg0KICAgICAgICAvLyBSZWxhdGlvbnNoaXBzIHdpdGggRXh0ZXJuYWwgU3lzdGVtcw0KICAgICAgICB1c2VyU2VydmljZSAtPiBteXNxbCAiUmVhZHMvV3JpdGVzIHVzZXIgZGF0YSINCiAgICAgICAgdXNlclNlcnZpY2UgLT4gcmVkaXMgIkNhY2hlcyB1c2VyIHNlc3Npb25zIg0KICAgICAgICB1c2VyU2VydmljZSAtPiBuZW80aiAiTWFuYWdlcyB1c2VyLXRhc2sgcmVsYXRpb25zaGlwcyINCg0KICAgICAgICBkb2N1bWVudFNlcnZpY2UgLT4gbXlzcWwgIlN0b3JlcyBtZXRhZGF0YSINCiAgICAgICAgZG9jdW1lbnRTZXJ2aWNlIC0+IGVsYXN0aWNzZWFyY2ggIkluZGV4ZXMgZG9jdW1lbnQgZGF0YSINCiAgICAgICAgZG9jdW1lbnRTZXJ2aWNlIC0+IG5lbzRqICJMaW5rcyB0byBwYXJ0cyBhbmQgY2hhbmdlcyINCg0KICAgICAgICB0YXNrU2VydmljZSAtPiBteXNxbCAiU3RvcmVzIHRhc2sgZGF0YSINCiAgICAgICAgdGFza1NlcnZpY2UgLT4gZWxhc3RpY3NlYXJjaCAiSW5kZXhlcyB0YXNrcyINCiAgICAgICAgdGFza1NlcnZpY2UgLT4gbmVvNGogIkxpbmtzIHRhc2tzIHdpdGggdXNlcnMgYW5kIHdvcmtmbG93IGluc3RhbmNlcyINCg0KICAgICAgICBib21TZXJ2aWNlIC0+IG15c3FsICJTdG9yZXMgcGFydHMvQk9NcyINCiAgICAgICAgYm9tU2VydmljZSAtPiBlbGFzdGljc2VhcmNoICJJbmRleGVzIHBhcnRzL0JPTXMiDQogICAgICAgIGJvbVNlcnZpY2UgLT4gbmVvNGogIkxpbmtzIHBhcnRzIHdpdGggZG9jdW1lbnRzL2NoYW5nZXMiDQoNCiAgICAgICAgY2hhbmdlU2VydmljZSAtPiBteXNxbCAiU3RvcmVzIGNoYW5nZSByZXF1ZXN0IGRhdGEiDQogICAgICAgIGNoYW5nZVNlcnZpY2UgLT4gZWxhc3RpY3NlYXJjaCAiSW5kZXhlcyBjaGFuZ2VzIg0KICAgICAgICBjaGFuZ2VTZXJ2aWNlIC0+IG5lbzRqICJMaW5rcyBjaGFuZ2VzIHRvIHBhcnRzL2RvY3VtZW50cyINCg0KICAgICAgICBmaWxlU3RvcmFnZVNlcnZpY2UgLT4gbXlzcWwgIlN0b3JlcyBmaWxlIG1ldGFkYXRhIg0KICAgICAgICBmaWxlU3RvcmFnZVNlcnZpY2UgLT4gbWluaW8gIlN0b3JlcyBmaWxlcyINCg0KICAgICAgICB3b3JrZmxvd09yY2hlc3RyYXRvciAtPiBteXNxbCAiU3RvcmVzIHdvcmtmbG93IHN0YXRlIChaZWViZSB0YWJsZXMpIg0KICAgICAgICB3b3JrZmxvd09yY2hlc3RyYXRvciAtPiByYWJiaXRtcSAiU2VuZHMgZXZlbnRzIg0KDQogICAgICAgIC8vIFJlbGF0aW9uc2hpcHMgd2l0aCBOZ2lueCAoSW5kZXBlbmRlbnQpDQogICAgICAgIHVzZXIgLT4gbmdpbnggIlVzZXMgd2ViIGFwcCINCiAgICAgICAgbmdpbnggLT4gYXBpR2F0ZXdheSAiUHJveGllcyByZXF1ZXN0cyB0byBQTE0gTGl0ZSBTeXN0ZW0iDQogICAgICAgIG5naW54IC0+IHJlYWN0RnJvbnRlbmQgIlNlcnZlcyBmcm9udGVuZCINCiAgICAgICAgDQogICAgICAgIHVzZXJTZXJ2aWNlIC0+IGV1cmVrYVNlcnZlciAiUmVnaXN0ZXJzIHdpdGgiDQogICAgICAgIGRvY3VtZW50U2VydmljZSAtPiBldXJla2FTZXJ2ZXIgIlJlZ2lzdGVycyB3aXRoIg0KICAgICAgICBib21TZXJ2aWNlIC0+IGV1cmVrYVNlcnZlciAiUmVnaXN0ZXJzIHdpdGgiDQogICAgICAgIGNoYW5nZVNlcnZpY2UgLT4gZXVyZWthU2VydmVyICJSZWdpc3RlcnMgd2l0aCINCiAgICAgICAgdGFza1NlcnZpY2UgLT4gZXVyZWthU2VydmVyICJSZWdpc3RlcnMgd2l0aCINCiAgICAgICAgZmlsZVN0b3JhZ2VTZXJ2aWNlIC0+IGV1cmVrYVNlcnZlciAiUmVnaXN0ZXJzIHdpdGgiDQogICAgfQ0KDQogICAgdmlld3Mgew0KICAgICAgICBzeXN0ZW1Db250ZXh0IHBsbUxpdGUgew0KICAgICAgICAgICAgaW5jbHVkZSAqDQogICAgICAgICAgICBpbmNsdWRlIHVzZXINCiAgICAgICAgICAgIGF1dG9sYXlvdXQgbHINCiAgICAgICAgICAgIHRpdGxlICJDMSAtIFBMTSBMaXRlIFN5c3RlbSBDb250ZXh0Ig0KICAgICAgICB9DQoNCiAgICAgICAgY29udGFpbmVyIHBsbUxpdGUgew0KICAgICAgICAgICAgaW5jbHVkZSAqDQogICAgICAgICAgICBpbmNsdWRlIHVzZXINCiAgICAgICAgICAgIGF1dG9sYXlvdXQgbHINCiAgICAgICAgICAgIHRpdGxlICJDMiAtIFBMTSBMaXRlIENvbnRhaW5lciBWaWV3Ig0KICAgICAgICB9DQoNCiAgICAgICAgY29tcG9uZW50IHVzZXJTZXJ2aWNlIHsNCiAgICAgICAgICAgIGluY2x1ZGUgKg0KICAgICAgICAgICAgYXV0b2xheW91dCB0Yg0KICAgICAgICAgICAgdGl0bGUgIkMzIC0gVXNlclNlcnZpY2UgQ29tcG9uZW50cyINCiAgICAgICAgfQ0KDQogICAgICAgIGNvbXBvbmVudCBkb2N1bWVudFNlcnZpY2Ugew0KICAgICAgICAgICAgaW5jbHVkZSAqDQogICAgICAgICAgICBhdXRvbGF5b3V0IHRiDQogICAgICAgICAgICB0aXRsZSAiQzMgLSBEb2N1bWVudFNlcnZpY2UgQ29tcG9uZW50cyINCiAgICAgICAgfQ0KDQogICAgICAgIGNvbXBvbmVudCB0YXNrU2VydmljZSB7DQogICAgICAgICAgICBpbmNsdWRlICoNCiAgICAgICAgICAgIGF1dG9sYXlvdXQgdGINCiAgICAgICAgICAgIHRpdGxlICJDMyAtIFRhc2tTZXJ2aWNlIENvbXBvbmVudHMiDQogICAgICAgIH0NCg0KICAgICAgICBjb21wb25lbnQgYm9tU2VydmljZSB7DQogICAgICAgICAgICBpbmNsdWRlICoNCiAgICAgICAgICAgIGF1dG9sYXlvdXQgdGINCiAgICAgICAgICAgIHRpdGxlICJDMyAtIEJPTVNlcnZpY2UgQ29tcG9uZW50cyINCiAgICAgICAgfQ0KDQogICAgICAgIGNvbXBvbmVudCBjaGFuZ2VTZXJ2aWNlIHsNCiAgICAgICAgICAgIGluY2x1ZGUgKg0KICAgICAgICAgICAgYXV0b2xheW91dCB0Yg0KICAgICAgICAgICAgdGl0bGUgIkMzIC0gQ2hhbmdlU2VydmljZSBDb21wb25lbnRzIg0KICAgICAgICB9DQoNCiAgICAgICAgY29tcG9uZW50IGZpbGVTdG9yYWdlU2VydmljZSB7DQogICAgICAgICAgICBpbmNsdWRlICoNCiAgICAgICAgICAgIGF1dG9sYXlvdXQgdGINCiAgICAgICAgICAgIHRpdGxlICJDMyAtIEZpbGVTdG9yYWdlU2VydmljZSBDb21wb25lbnRzIg0KICAgICAgICB9DQoNCiAgICAgICAgY29tcG9uZW50IHdvcmtmbG93T3JjaGVzdHJhdG9yIHsNCiAgICAgICAgICAgIGluY2x1ZGUgKg0KICAgICAgICAgICAgYXV0b2xheW91dCB0Yg0KICAgICAgICAgICAgdGl0bGUgIkMzIC0gV29ya2Zsb3dPcmNoZXN0cmF0b3IgQ29tcG9uZW50cyINCiAgICAgICAgfQ0KDQogICAgICAgIGNvbXBvbmVudCBhcGlHYXRld2F5IHsNCiAgICAgICAgICAgIGluY2x1ZGUgKg0KICAgICAgICAgICAgYXV0b2xheW91dCB0Yg0KICAgICAgICAgICAgdGl0bGUgIkMzIC0gQVBJR2F0ZXdheSBDb21wb25lbnRzIg0KICAgICAgICB9DQoNCiAgICAgICAgY29tcG9uZW50IHJlYWN0RnJvbnRlbmQgew0KICAgICAgICAgICAgaW5jbHVkZSAqDQogICAgICAgICAgICBhdXRvbGF5b3V0IHRiDQogICAgICAgICAgICB0aXRsZSAiQzMgLSBSZWFjdEZyb250ZW5kIENvbXBvbmVudHMiDQogICAgICAgIH0NCg0KICAgICAgICAvLyBEeW5hbWljIFZpZXdzDQogICAgICAgIGR5bmFtaWMgcGxtTGl0ZSB7DQogICAgICAgICAgICBkZXNjcmlwdGlvbiAiU2hvd3MgdGhlIGVuZC10by1lbmQgZG9jdW1lbnQgYXBwcm92YWwgd29ya2Zsb3ciDQogICAgICAgICAgICB1c2VyIC0+IG5naW54ICJVcGxvYWRzIGEgZG9jdW1lbnQiDQogICAgICAgICAgICBuZ2lueCAtPiBhcGlHYXRld2F5ICJQcm94aWVzIHJlcXVlc3QiDQogICAgICAgICAgICBhcGlHYXRld2F5IC0+IGRvY3VtZW50U2VydmljZSAiU3RvcmVzIGRvY3VtZW50IG1ldGFkYXRhIg0KICAgICAgICAgICAgZG9jdW1lbnRTZXJ2aWNlIC0+IGZpbGVTdG9yYWdlU2VydmljZSAiU3RvcmVzIGZpbGUgaW4gTWluSU8iDQogICAgICAgICAgICBkb2N1bWVudFNlcnZpY2UgLT4gd29ya2Zsb3dPcmNoZXN0cmF0b3IgIlN0YXJ0cyBhcHByb3ZhbCB3b3JrZmxvdyINCiAgICAgICAgICAgIHdvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRhc2tTZXJ2aWNlICJDcmVhdGVzIGFwcHJvdmFsIHRhc2siDQogICAgICAgICAgICB0YXNrU2VydmljZSAtPiB1c2VyU2VydmljZSAiTm90aWZpZXMgYXBwcm92ZXJzIg0KICAgICAgICB9DQoNCiAgICAgICAgZHluYW1pYyBwbG1MaXRlIHsNCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJTaG93cyB0aGUgZW5kLXRvLWVuZCBjaGFuZ2UgYXBwcm92YWwgd29ya2Zsb3ciDQogICAgICAgICAgICB1c2VyIC0+IG5naW54ICJTdWJtaXRzIGNoYW5nZSByZXF1ZXN0Ig0KICAgICAgICAgICAgbmdpbnggLT4gYXBpR2F0ZXdheSAiUHJveGllcyByZXF1ZXN0Ig0KICAgICAgICAgICAgYXBpR2F0ZXdheSAtPiBjaGFuZ2VTZXJ2aWNlICJQcm9jZXNzZXMgY2hhbmdlIg0KICAgICAgICAgICAgY2hhbmdlU2VydmljZSAtPiB3b3JrZmxvd09yY2hlc3RyYXRvciAiU3RhcnRzIGFwcHJvdmFsIHdvcmtmbG93Ig0KICAgICAgICAgICAgd29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gdGFza1NlcnZpY2UgIkNyZWF0ZXMgYXBwcm92YWwgdGFza3MiDQogICAgICAgICAgICB0YXNrU2VydmljZSAtPiB1c2VyU2VydmljZSAiTm90aWZpZXMgYXBwcm92ZXJzIg0KICAgICAgICAgICAgY2hhbmdlU2VydmljZSAtPiBkb2N1bWVudFNlcnZpY2UgIlJlZmVyZW5jZXMgYWZmZWN0ZWQgZG9jdW1lbnRzIg0KICAgICAgICAgICAgY2hhbmdlU2VydmljZSAtPiBib21TZXJ2aWNlICJSZWZlcmVuY2VzIGFmZmVjdGVkIHBhcnRzL0JPTXMiDQogICAgICAgIH0NCg0KICAgICAgICBkeW5hbWljIHBsbUxpdGUgew0KICAgICAgICAgICAgZGVzY3JpcHRpb24gIlNob3dzIHRoZSBlbmQtdG8tZW5kIFBhcnQvQk9NIChQQlMpIGNyZWF0aW9uIHdvcmtmbG93Ig0KICAgICAgICAgICAgdXNlciAtPiBuZ2lueCAiQ3JlYXRlcyBQQlMiDQogICAgICAgICAgICBuZ2lueCAtPiBhcGlHYXRld2F5ICJQcm94aWVzIHJlcXVlc3QiDQogICAgICAgICAgICBhcGlHYXRld2F5IC0+IGJvbVNlcnZpY2UgIkNyZWF0ZXMgbmV3IHBhcnQvQk9NIg0KICAgICAgICAgICAgYm9tU2VydmljZSAtPiBkb2N1bWVudFNlcnZpY2UgIlJlZmVyZW5jZXMgbGlua2VkIGRvY3VtZW50cyINCiAgICAgICAgfQ0KDQogICAgICAgIC8vIFN0eWxlcw0KICAgICAgICBzdHlsZXMgew0KICAgICAgICAgICAgZWxlbWVudCAiU2VydmljZSIgew0KICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzExNjhiZA0KICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIGVsZW1lbnQgIkZyb250ZW5kIiB7DQogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMDg0MjdiDQogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZg0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgZWxlbWVudCAiUHJveHkiIHsNCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwMDk2ODgNCiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmDQogICAgICAgICAgICB9DQogICAgICAgICAgICBlbGVtZW50ICJEYXRhYmFzZSIgew0KICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyDQogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjZmZjYzAwDQogICAgICAgICAgICB9DQogICAgICAgICAgICBlbGVtZW50ICJDYWNoZSIgew0KICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyDQogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMDBjYzk5DQogICAgICAgICAgICB9DQogICAgICAgICAgICBlbGVtZW50ICJTZWFyY2ggRW5naW5lIiB7DQogICAgICAgICAgICAgICAgc2hhcGUgQ3lsaW5kZXINCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICNmZjk5MDANCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIGVsZW1lbnQgIlN0b3JhZ2UiIHsNCiAgICAgICAgICAgICAgICBzaGFwZSBDeWxpbmRlcg0KICAgICAgICAgICAgICAgIGJhY2tncm91bmQgI2ZmNjY2Ng0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgZWxlbWVudCAiTWVzc2FnZSBCcm9rZXIiIHsNCiAgICAgICAgICAgICAgICBzaGFwZSBDeWxpbmRlcg0KICAgICAgICAgICAgICAgIGJhY2tncm91bmQgI2NjMDBjYw0KICAgICAgICAgICAgfQ0KICAgICAgICB9DQoNCiAgICAgICAgdGhlbWUgZGVmYXVsdA0KICAgIH0NCn0="
+  },
+  "views" : {
+    "componentViews" : [ {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "3",
+      "dimensions" : {
+        "height" : 2011,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "4",
+        "x" : 220,
+        "y" : 185
+      }, {
+        "id" : "5",
+        "x" : 220,
+        "y" : 785
+      }, {
+        "id" : "6",
+        "x" : 220,
+        "y" : 1385
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-001",
+      "order" : 3,
+      "relationships" : [ {
+        "id" : "7"
+      }, {
+        "id" : "8"
+      } ],
+      "title" : "C3 - UserService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "9",
+      "dimensions" : {
+        "height" : 2011,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "10",
+        "x" : 220,
+        "y" : 185
+      }, {
+        "id" : "11",
+        "x" : 220,
+        "y" : 785
+      }, {
+        "id" : "12",
+        "x" : 220,
+        "y" : 1385
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-002",
+      "order" : 4,
+      "relationships" : [ {
+        "id" : "13"
+      }, {
+        "id" : "14"
+      } ],
+      "title" : "C3 - DocumentService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "15",
+      "dimensions" : {
+        "height" : 2011,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "16",
+        "x" : 220,
+        "y" : 185
+      }, {
+        "id" : "17",
+        "x" : 220,
+        "y" : 785
+      }, {
+        "id" : "18",
+        "x" : 220,
+        "y" : 1385
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-003",
+      "order" : 5,
+      "relationships" : [ {
+        "id" : "19"
+      }, {
+        "id" : "20"
+      } ],
+      "title" : "C3 - TaskService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "21",
+      "dimensions" : {
+        "height" : 2011,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "22",
+        "x" : 220,
+        "y" : 185
+      }, {
+        "id" : "23",
+        "x" : 220,
+        "y" : 785
+      }, {
+        "id" : "24",
+        "x" : 220,
+        "y" : 1385
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-004",
+      "order" : 6,
+      "relationships" : [ {
+        "id" : "25"
+      }, {
+        "id" : "26"
+      } ],
+      "title" : "C3 - BOMService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "27",
+      "elements" : [ {
+        "id" : "28",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "29",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "30",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-005",
+      "order" : 7,
+      "relationships" : [ {
+        "id" : "31"
+      }, {
+        "id" : "32"
+      } ],
+      "title" : "C3 - ChangeService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "33",
+      "elements" : [ {
+        "id" : "34",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "35",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "36",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "37",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-006",
+      "order" : 8,
+      "relationships" : [ {
+        "id" : "38"
+      }, {
+        "id" : "39"
+      }, {
+        "id" : "40"
+      } ],
+      "title" : "C3 - FileStorageService Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "41",
+      "dimensions" : {
+        "height" : 2011,
+        "width" : 1640
+      },
+      "elements" : [ {
+        "id" : "42",
+        "x" : 594,
+        "y" : 185
+      }, {
+        "id" : "43",
+        "x" : 594,
+        "y" : 785
+      }, {
+        "id" : "44",
+        "x" : 219,
+        "y" : 1385
+      }, {
+        "id" : "45",
+        "x" : 969,
+        "y" : 1385
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-007",
+      "order" : 9,
+      "relationships" : [ {
+        "id" : "46"
+      }, {
+        "id" : "47"
+      }, {
+        "id" : "48"
+      } ],
+      "title" : "C3 - WorkflowOrchestrator Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "49",
+      "dimensions" : {
+        "height" : 1411,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "50",
+        "x" : 219,
+        "y" : 185
+      }, {
+        "id" : "51",
+        "x" : 219,
+        "y" : 785
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-008",
+      "order" : 10,
+      "relationships" : [ {
+        "id" : "52"
+      } ],
+      "title" : "C3 - APIGateway Components"
+    }, {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "53",
+      "dimensions" : {
+        "height" : 1411,
+        "width" : 890
+      },
+      "elements" : [ {
+        "id" : "54",
+        "x" : 220,
+        "y" : 185
+      }, {
+        "id" : "55",
+        "x" : 220,
+        "y" : 785
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Component-009",
+      "order" : 11,
+      "relationships" : [ {
+        "id" : "56"
+      } ],
+      "title" : "C3 - ReactFrontend Components"
+    } ],
+    "configuration" : {
+      "branding" : { },
+      "lastSavedView" : "Component-009",
+      "metadataSymbols" : "SquareBrackets",
+      "styles" : {
+        "elements" : [ {
+          "background" : "#1168bd",
+          "color" : "#ffffff",
+          "tag" : "Service"
+        }, {
+          "background" : "#08427b",
+          "color" : "#ffffff",
+          "tag" : "Frontend"
+        }, {
+          "background" : "#009688",
+          "color" : "#ffffff",
+          "tag" : "Proxy"
+        }, {
+          "background" : "#ffcc00",
+          "shape" : "Cylinder",
+          "tag" : "Database"
+        }, {
+          "background" : "#00cc99",
+          "shape" : "Cylinder",
+          "tag" : "Cache"
+        }, {
+          "background" : "#ff9900",
+          "shape" : "Cylinder",
+          "tag" : "Search Engine"
+        }, {
+          "background" : "#ff6666",
+          "shape" : "Cylinder",
+          "tag" : "Storage"
+        }, {
+          "background" : "#cc00cc",
+          "shape" : "Cylinder",
+          "tag" : "Message Broker"
+        } ]
+      },
+      "terminology" : { },
+      "themes" : [ "https://static.structurizr.com/themes/default/theme.json" ]
+    },
+    "containerViews" : [ {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "dimensions" : {
+        "height" : 6145,
+        "width" : 6350
+      },
+      "elements" : [ {
+        "id" : "1",
+        "x" : 200,
+        "y" : 4310
+      }, {
+        "id" : "3",
+        "x" : 4800,
+        "y" : 2305
+      }, {
+        "id" : "9",
+        "x" : 2550,
+        "y" : 3845
+      }, {
+        "id" : "15",
+        "x" : 4050,
+        "y" : 2925
+      }, {
+        "id" : "21",
+        "x" : 4800,
+        "y" : 3905
+      }, {
+        "id" : "27",
+        "x" : 4050,
+        "y" : 3525
+      }, {
+        "id" : "33",
+        "x" : 4800,
+        "y" : 805
+      }, {
+        "id" : "41",
+        "x" : 3300,
+        "y" : 4155
+      }, {
+        "id" : "49",
+        "x" : 1800,
+        "y" : 3420
+      }, {
+        "id" : "53",
+        "x" : 1800,
+        "y" : 4990
+      }, {
+        "id" : "72",
+        "x" : 5700,
+        "y" : 2100
+      }, {
+        "id" : "73",
+        "x" : 5700,
+        "y" : 4640
+      }, {
+        "id" : "74",
+        "x" : 5700,
+        "y" : 1395
+      }, {
+        "id" : "75",
+        "x" : 5700,
+        "y" : 5240
+      }, {
+        "id" : "76",
+        "x" : 5700,
+        "y" : 165
+      }, {
+        "id" : "77",
+        "x" : 4050,
+        "y" : 5610
+      }, {
+        "id" : "78",
+        "x" : 900,
+        "y" : 4360
+      }, {
+        "id" : "79",
+        "x" : 5700,
+        "y" : 765
+      } ],
+      "externalSoftwareSystemBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Container-001",
+      "order" : 2,
+      "relationships" : [ {
+        "id" : "100"
+      }, {
+        "id" : "102"
+      }, {
+        "id" : "103"
+      }, {
+        "id" : "105"
+      }, {
+        "id" : "106"
+      }, {
+        "id" : "108"
+      }, {
+        "id" : "109"
+      }, {
+        "id" : "111"
+      }, {
+        "id" : "112"
+      }, {
+        "id" : "113"
+      }, {
+        "id" : "114"
+      }, {
+        "id" : "115"
+      }, {
+        "id" : "57"
+      }, {
+        "id" : "58"
+      }, {
+        "id" : "59"
+      }, {
+        "id" : "60"
+      }, {
+        "id" : "61"
+      }, {
+        "id" : "62"
+      }, {
+        "id" : "63"
+      }, {
+        "id" : "64"
+      }, {
+        "id" : "65"
+      }, {
+        "id" : "66"
+      }, {
+        "id" : "67"
+      }, {
+        "id" : "68"
+      }, {
+        "id" : "69"
+      }, {
+        "id" : "70"
+      }, {
+        "id" : "71"
+      }, {
+        "id" : "80"
+      }, {
+        "id" : "82"
+      }, {
+        "id" : "84"
+      }, {
+        "id" : "86"
+      }, {
+        "id" : "87"
+      }, {
+        "id" : "89"
+      }, {
+        "id" : "90"
+      }, {
+        "id" : "91"
+      }, {
+        "id" : "92"
+      }, {
+        "id" : "93"
+      }, {
+        "id" : "94"
+      }, {
+        "id" : "95"
+      }, {
+        "id" : "96"
+      }, {
+        "id" : "97"
+      }, {
+        "id" : "98"
+      }, {
+        "id" : "99"
+      } ],
+      "softwareSystemId" : "2",
+      "title" : "C2 - PLM Lite Container View"
+    } ],
+    "dynamicViews" : [ {
+      "description" : "Shows the end-to-end document approval workflow",
+      "dimensions" : {
+        "height" : 2480,
+        "width" : 3508
+      },
+      "elementId" : "2",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 1715,
+        "y" : 95
+      }, {
+        "id" : "3",
+        "x" : 848,
+        "y" : 665
+      }, {
+        "id" : "9",
+        "x" : 2438,
+        "y" : 1240
+      }, {
+        "id" : "15",
+        "x" : 1690,
+        "y" : 655
+      }, {
+        "id" : "33",
+        "x" : 2448,
+        "y" : 1850
+      }, {
+        "id" : "41",
+        "x" : 1688,
+        "y" : 1230
+      }, {
+        "id" : "49",
+        "x" : 2428,
+        "y" : 650
+      }, {
+        "id" : "78",
+        "x" : 2430,
+        "y" : 130
+      } ],
+      "externalBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Dynamic-001",
+      "order" : 12,
+      "paperSize" : "A4_Landscape",
+      "relationships" : [ {
+        "description" : "Uploads a document",
+        "id" : "105",
+        "order" : "1",
+        "response" : false
+      }, {
+        "description" : "Proxies request",
+        "id" : "106",
+        "order" : "2",
+        "response" : false
+      }, {
+        "description" : "Stores document metadata",
+        "id" : "63",
+        "order" : "3",
+        "response" : false
+      }, {
+        "description" : "Stores file in MinIO",
+        "id" : "57",
+        "order" : "4",
+        "response" : false
+      }, {
+        "description" : "Starts approval workflow",
+        "id" : "58",
+        "order" : "5",
+        "response" : false
+      }, {
+        "description" : "Creates approval task",
+        "id" : "59",
+        "order" : "6",
+        "response" : false
+      }, {
+        "description" : "Notifies approvers",
+        "id" : "68",
+        "order" : "7",
+        "response" : false
+      } ]
+    }, {
+      "description" : "Shows the end-to-end change approval workflow",
+      "dimensions" : {
+        "height" : 2480,
+        "width" : 3508
+      },
+      "elementId" : "2",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 1550,
+        "y" : 95
+      }, {
+        "id" : "3",
+        "x" : 830,
+        "y" : 1130
+      }, {
+        "id" : "9",
+        "x" : 1555,
+        "y" : 655
+      }, {
+        "id" : "15",
+        "x" : 840,
+        "y" : 1775
+      }, {
+        "id" : "21",
+        "x" : 1545,
+        "y" : 1165
+      }, {
+        "id" : "27",
+        "x" : 2285,
+        "y" : 1180
+      }, {
+        "id" : "41",
+        "x" : 2295,
+        "y" : 1780
+      }, {
+        "id" : "49",
+        "x" : 2275,
+        "y" : 645
+      }, {
+        "id" : "78",
+        "x" : 2260,
+        "y" : 170
+      } ],
+      "externalBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Dynamic-002",
+      "order" : 13,
+      "paperSize" : "A4_Landscape",
+      "relationships" : [ {
+        "description" : "Submits change request",
+        "id" : "105",
+        "order" : "1",
+        "response" : false
+      }, {
+        "description" : "Proxies request",
+        "id" : "106",
+        "order" : "2",
+        "response" : false
+      }, {
+        "description" : "Processes change",
+        "id" : "64",
+        "order" : "3",
+        "response" : false
+      }, {
+        "description" : "Starts approval workflow",
+        "id" : "61",
+        "order" : "4",
+        "response" : true
+      }, {
+        "description" : "Creates approval tasks",
+        "id" : "59",
+        "order" : "5",
+        "response" : false
+      }, {
+        "description" : "Notifies approvers",
+        "id" : "68",
+        "order" : "6",
+        "response" : false
+      }, {
+        "description" : "References affected documents",
+        "id" : "69",
+        "order" : "7",
+        "response" : false
+      }, {
+        "description" : "References affected parts/BOMs",
+        "id" : "70",
+        "order" : "8",
+        "response" : false
+      } ]
+    }, {
+      "description" : "Shows the end-to-end Part/BOM (PBS) creation workflow",
+      "dimensions" : {
+        "height" : 1748,
+        "width" : 2480
+      },
+      "elementId" : "2",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 720,
+        "y" : 95
+      }, {
+        "id" : "9",
+        "x" : 730,
+        "y" : 1160
+      }, {
+        "id" : "21",
+        "x" : 1455,
+        "y" : 1160
+      }, {
+        "id" : "49",
+        "x" : 1440,
+        "y" : 615
+      }, {
+        "id" : "78",
+        "x" : 1435,
+        "y" : 135
+      } ],
+      "externalBoundariesVisible" : false,
+      "generatedKey" : true,
+      "key" : "Dynamic-003",
+      "order" : 14,
+      "paperSize" : "A5_Landscape",
+      "relationships" : [ {
+        "description" : "Creates PBS",
+        "id" : "105",
+        "order" : "1",
+        "response" : false
+      }, {
+        "description" : "Proxies request",
+        "id" : "106",
+        "order" : "2",
+        "response" : false
+      }, {
+        "description" : "Creates new part/BOM",
+        "id" : "65",
+        "order" : "3",
+        "response" : false
+      }, {
+        "description" : "References linked documents",
+        "id" : "71",
+        "order" : "4",
+        "response" : false
+      } ]
+    } ],
+    "systemContextViews" : [ {
+      "automaticLayout" : {
+        "applied" : false,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "dimensions" : {
+        "height" : 4300,
+        "width" : 3050
+      },
+      "elements" : [ {
+        "id" : "1",
+        "x" : 200,
+        "y" : 1915
+      }, {
+        "id" : "2",
+        "x" : 1650,
+        "y" : 1965
+      }, {
+        "id" : "72",
+        "x" : 2400,
+        "y" : 1965
+      }, {
+        "id" : "73",
+        "x" : 2400,
+        "y" : 3165
+      }, {
+        "id" : "74",
+        "x" : 2400,
+        "y" : 2565
+      }, {
+        "id" : "75",
+        "x" : 2400,
+        "y" : 3765
+      }, {
+        "id" : "76",
+        "x" : 2400,
+        "y" : 165
+      }, {
+        "id" : "77",
+        "x" : 2400,
+        "y" : 765
+      }, {
+        "id" : "78",
+        "x" : 900,
+        "y" : 1965
+      }, {
+        "id" : "79",
+        "x" : 2400,
+        "y" : 1365
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "generatedKey" : true,
+      "key" : "SystemContext-001",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "101"
+      }, {
+        "id" : "104"
+      }, {
+        "id" : "105"
+      }, {
+        "id" : "107"
+      }, {
+        "id" : "110"
+      }, {
+        "id" : "81"
+      }, {
+        "id" : "83"
+      }, {
+        "id" : "85"
+      }, {
+        "id" : "88"
+      } ],
+      "softwareSystemId" : "2",
+      "title" : "C1 - PLM Lite System Context"
+    } ]
+  }
+}
