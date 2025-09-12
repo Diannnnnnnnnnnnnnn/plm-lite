@@ -1,8 +1,18 @@
 package com.example.bom_service.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "bom_headers")
@@ -35,6 +45,12 @@ public class BomHeader {
     
     @Column(nullable = false)
     private LocalDateTime updateTime;
+    
+    @Column(nullable = false)
+    private boolean deleted = false;
+    
+    @Column
+    private LocalDateTime deleteTime;
     
     @PrePersist
     protected void onCreate() {
@@ -118,5 +134,21 @@ public class BomHeader {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+    
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeleteTime() {
+        return deleteTime;
+    }
+
+    public void setDeleteTime(LocalDateTime deleteTime) {
+        this.deleteTime = deleteTime;
     }
 }

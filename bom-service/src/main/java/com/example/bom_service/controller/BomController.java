@@ -1,15 +1,26 @@
 package com.example.bom_service.controller;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.example.bom_service.dto.request.CreateBomRequest;
+import com.example.bom_service.dto.request.UpdateBomRequest;
 import com.example.bom_service.dto.response.BomResponse;
 import com.example.bom_service.model.BomHeader;
 import com.example.bom_service.model.BomItem;
 import com.example.bom_service.service.BomService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
+import com.example.plm.common.model.Stage;
 
 @RestController
 @RequestMapping("/boms")
@@ -27,6 +38,15 @@ public class BomController {
         return ResponseEntity.ok(toResponse(header));
     }
 
+    @GetMapping
+    public ResponseEntity<List<BomResponse>> getAll() {
+        List<BomHeader> headers = bomService.getAll();
+        List<BomResponse> responses = headers.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BomResponse> getById(@PathVariable String id) {
         BomHeader header = bomService.getById(id);
@@ -40,6 +60,18 @@ public class BomController {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<BomResponse> update(@PathVariable String id, @RequestBody UpdateBomRequest request) {
+        BomHeader header = bomService.update(id, request);
+        return ResponseEntity.ok(toResponse(header));
+    }
+    
+    @PatchMapping("/{id}/stage/{stage}")
+    public ResponseEntity<BomResponse> updateStage(@PathVariable String id, @PathVariable Stage stage) {
+        BomHeader header = bomService.updateStage(id, stage);
+        return ResponseEntity.ok(toResponse(header));
     }
 
     @DeleteMapping("/{id}")
