@@ -9,14 +9,15 @@ public class DocumentMapper {
 
     public static DocumentResponse toResponse(Document d) {
         if (d == null) return null;
-        
+
         return new DocumentResponse(
                 d.getId(),
                 d.getMaster() != null ? d.getMaster().getId() : null,
                 d.getTitle(),
                 d.getStatus(),
                 d.getStage(),
-                d.getFullVersion()
+                d.getFullVersion(),
+                d.getFileKey()
         );
     }
 }

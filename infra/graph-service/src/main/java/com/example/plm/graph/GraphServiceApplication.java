@@ -1,13 +1,14 @@
-package com.example.graph_service;
+package com.example.plm.graph;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
+@EnableFeignClients
 public class GraphServiceApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(GraphServiceApplication.class, args);
 	}
-
 }

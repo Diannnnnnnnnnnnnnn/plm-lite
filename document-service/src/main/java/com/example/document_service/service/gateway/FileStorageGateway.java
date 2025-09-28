@@ -4,5 +4,5 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileStorageGateway {
     String upload(String documentId, MultipartFile file);
-    byte[] download(String documentId);
+    byte[] download(String fileKey);
 }

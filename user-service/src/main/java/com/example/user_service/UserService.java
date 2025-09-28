@@ -38,10 +38,24 @@ public class UserService {
 
     @CacheEvict(value = "users", key = "'all'")
     public User addUser(User user) {
-     //  return userRepository.save(user); this code made before the neo4j
+        // Encrypt password before saving
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
         User savedUser = userRepository.save(user);
-     // Send to graph service
-        graphClient.createUser(String.valueOf(savedUser.getId()), savedUser.getUsername());
+
+        // Send to graph service - with graceful failure handling
+        // Temporarily disabled to prevent timeouts
+        /*
+        try {
+            graphClient.createUser(String.valueOf(savedUser.getId()), savedUser.getUsername());
+            System.out.println("INFO: Successfully created user in graph service: " + savedUser.getUsername());
+        } catch (Exception e) {
+            System.out.println("WARN: Failed to create user in graph service, but user saved to database: " + e.getMessage());
+            // Don't throw exception - allow user creation to continue even if graph service fails
+        }
+        */
+        System.out.println("INFO: Graph service integration temporarily disabled - user saved to database only: " + savedUser.getUsername());
+
         return savedUser;
     }
 

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import com.example.document_service.client.SearchServiceClient;
 import com.example.document_service.model.Document;
 import com.example.document_service.service.gateway.SearchGateway;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 
 @Component
@@ -35,7 +35,7 @@ public class SearchGatewayFeign implements SearchGateway {
     }
 
     @Override
-    public List<SearchServiceClient.DocumentEsDto> search(String q, Stage stage, DocumentStatus status, String category) {
+    public List<SearchServiceClient.DocumentEsDto> search(String q, Stage stage, Status status, String category) {
         return client.search(q, stage != null ? stage.name() : null, 
                               status != null ? status.name() : null, 
                               category);

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
-@FeignClient(name = "file-storage", url = "http://localhost:9900",configuration = com.example.task_service.config.FeignMultipartSupportConfig.class)
+@FeignClient(name = "file-storage-service", configuration = com.example.task_service.config.FeignMultipartSupportConfig.class)
 public interface FileStorageClient {
 
     @PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

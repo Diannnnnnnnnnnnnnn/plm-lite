@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.example.plm.common.model.Stage;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 
 public class SearchRequest {
 
     private String q;
     private Stage stage;
-    private DocumentStatus status;
+    private Status status;
     private String category;
 
     public SearchRequest() {}
@@ -18,7 +18,7 @@ public class SearchRequest {
     @JsonCreator
     public SearchRequest(@JsonProperty("q") String q,
                          @JsonProperty("stage") Stage stage,
-                         @JsonProperty("status") DocumentStatus status,
+                         @JsonProperty("status") Status status,
                          @JsonProperty("category") String category) {
         this.q = q;
         this.stage = stage;
@@ -42,11 +42,11 @@ public class SearchRequest {
         this.stage = stage;
     }
 
-    public DocumentStatus getStatus() {
+    public Status getStatus() {
         return status;
     }
 
-    public void setStatus(DocumentStatus status) {
+    public void setStatus(Status status) {
         this.status = status;
     }
 

@@ -20,7 +20,7 @@ import com.example.bom_service.model.BomItem;
 import com.example.bom_service.repository.BomHeaderRepository;
 import com.example.bom_service.repository.BomItemRepository;
 import com.example.bom_service.service.BomService;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 
 @Service
@@ -63,7 +63,7 @@ public class BomServiceImpl implements BomService {
         header.setDescription(request.getDescription());
         header.setCreator(request.getCreator());
         header.setStage(request.getStage());
-        header.setStatus(DocumentStatus.IN_WORK);
+        header.setStatus(Status.IN_WORK);
 
         // Create BOM items
         List<BomItem> items = new ArrayList<>();

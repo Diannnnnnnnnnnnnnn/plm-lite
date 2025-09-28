@@ -4,7 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@FeignClient(name = "workflow-orchestrator", url = "${workflow-orchestrator.url}")
+@FeignClient(name = "workflow-orchestrator")
 public interface WorkflowOrchestratorClient {
 
     @PostMapping("/workflow/reviews/start")

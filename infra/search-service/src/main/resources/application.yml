@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: search-service
+  profiles:
+    active: dev
+
+server:
+  port: 8085
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  elasticsearch:
+    uris: http://localhost:9200
+    username: ""
+    password: ""
+
+eureka:
+  client:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example.plm.search: DEBUG
+    org.springframework.data.elasticsearch: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    com.example.plm.search: INFO
+    org.springframework.data.elasticsearch: WARN

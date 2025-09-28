@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,6 +23,7 @@ import com.example.document_service.dto.request.ApproveRejectRequest;
 import com.example.document_service.dto.request.CreateDocumentRequest;
 import com.example.document_service.dto.request.SearchRequest;
 import com.example.document_service.dto.request.SubmitForReviewRequest;
+import com.example.document_service.dto.request.UpdateDocumentRequest;
 import com.example.document_service.dto.request.UpdateStageRequest;
 import com.example.document_service.dto.response.DocumentHistoryResponse;
 import com.example.document_service.dto.response.DocumentResponse;
@@ -36,7 +38,7 @@ import com.example.document_service.service.gateway.SearchGateway;
 import com.example.document_service.client.SearchServiceClient;
 
 @RestController
-@RequestMapping("/documents")
+@RequestMapping("/api/v1/documents")
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -54,9 +56,30 @@ public class DocumentController {
         this.searchGateway = searchGateway;
     }
 
+    @GetMapping
+    public List<DocumentResponse> getAllDocuments() {
+        List<Document> documents = documentService.getAllDocuments();
+        return documents.stream()
+                        .map(DocumentMapper::toResponse)
+                        .collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}")
+    public DocumentResponse getById(@PathVariable String id) {
+        Document d = documentService.getById(id);
+        return DocumentMapper.toResponse(d);
+    }
+
     @PostMapping
     public DocumentResponse create(@RequestBody CreateDocumentRequest req) {
         Document d = documentService.create(req);
+        return DocumentMapper.toResponse(d);
+    }
+
+    @PutMapping("/{id}")
+    public DocumentResponse update(@PathVariable String id,
+                                   @RequestBody UpdateDocumentRequest req) {
+        Document d = documentService.updateDocument(id, req);
         return DocumentMapper.toResponse(d);
     }
 
@@ -125,10 +148,39 @@ public class DocumentController {
 
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> download(@PathVariable String id) {
-        byte[] data = fileStorageGateway.download(id);
+        Document document = documentService.getById(id);
+        if (document.getFileKey() == null || document.getFileKey().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] data = fileStorageGateway.download(document.getFileKey());
+
+        // Extract original filename from fileKey (format: documentId_originalFilename)
+        String filename;
+        if (document.getFileKey() != null && document.getFileKey().contains("_")) {
+            // Extract the part after the first underscore (original filename with extension)
+            filename = document.getFileKey().substring(document.getFileKey().indexOf("_") + 1);
+        } else {
+            // Fallback to document title or ID if fileKey format is unexpected
+            filename = document.getTitle() != null ? document.getTitle() : id;
+        }
+
+        // Handle Unicode characters in filename by URL encoding
+        String encodedFilename;
+        try {
+            encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8")
+                    .replaceAll("\\+", "%20"); // Replace + with %20 for better compatibility
+        } catch (java.io.UnsupportedEncodingException e) {
+            // Fallback to ASCII-safe filename
+            encodedFilename = "document_" + id + ".bin";
+        }
+
+        // Determine the correct content type based on file extension
+        MediaType contentType = getContentTypeByFilename(filename);
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + id + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
+                .contentType(contentType)
                 .body(data);
     }
 
@@ -140,7 +192,63 @@ public class DocumentController {
                 req.getStatus(),
                 req.getCategory()
         );
-        
+
         return searchResult;
+    }
+
+    private MediaType getContentTypeByFilename(String filename) {
+        if (filename == null) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        String lowercaseFilename = filename.toLowerCase();
+
+        // Microsoft Office documents
+        if (lowercaseFilename.endsWith(".docx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        } else if (lowercaseFilename.endsWith(".doc")) {
+            return MediaType.parseMediaType("application/msword");
+        } else if (lowercaseFilename.endsWith(".xlsx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        } else if (lowercaseFilename.endsWith(".xls")) {
+            return MediaType.parseMediaType("application/vnd.ms-excel");
+        } else if (lowercaseFilename.endsWith(".pptx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        } else if (lowercaseFilename.endsWith(".ppt")) {
+            return MediaType.parseMediaType("application/vnd.ms-powerpoint");
+        }
+
+        // PDF
+        else if (lowercaseFilename.endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF;
+        }
+
+        // Images
+        else if (lowercaseFilename.endsWith(".jpg") || lowercaseFilename.endsWith(".jpeg")) {
+            return MediaType.IMAGE_JPEG;
+        } else if (lowercaseFilename.endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
+        } else if (lowercaseFilename.endsWith(".gif")) {
+            return MediaType.IMAGE_GIF;
+        }
+
+        // Text files
+        else if (lowercaseFilename.endsWith(".txt")) {
+            return MediaType.TEXT_PLAIN;
+        } else if (lowercaseFilename.endsWith(".csv")) {
+            return MediaType.parseMediaType("text/csv");
+        }
+
+        // Archives
+        else if (lowercaseFilename.endsWith(".zip")) {
+            return MediaType.parseMediaType("application/zip");
+        } else if (lowercaseFilename.endsWith(".rar")) {
+            return MediaType.parseMediaType("application/vnd.rar");
+        }
+
+        // Default to octet-stream for unknown types
+        else {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 }

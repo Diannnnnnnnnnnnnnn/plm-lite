@@ -1,0 +1,76 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: change-service
+
+  # MySQL Configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/plm_change_db?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: plm_user
+    password: plm_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  # Neo4j Configuration
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: neo4j_password
+
+  # Elasticsearch Configuration
+  elasticsearch:
+    uris: http://localhost:9200
+    username: elastic
+    password: elastic_password
+
+  # Cloud Configuration
+  cloud:
+    openfeign:
+      client:
+        config:
+          document-service:
+            url: http://localhost:8082
+
+# Eureka Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    com.example.plm.change: DEBUG
+    org.springframework.data.neo4j: DEBUG
+    org.springframework.data.elasticsearch: DEBUG
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

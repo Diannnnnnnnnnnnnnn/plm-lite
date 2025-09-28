@@ -17,9 +17,11 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file,
+                                       @RequestParam(value = "filename", required = false) String filename) {
         try {
-            fileService.uploadFile(file, file.getOriginalFilename());
+            String fileNameToUse = filename != null ? filename : file.getOriginalFilename();
+            fileService.uploadFile(file, fileNameToUse);
             return ResponseEntity.ok("Uploaded successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

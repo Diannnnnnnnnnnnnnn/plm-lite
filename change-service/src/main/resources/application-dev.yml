@@ -1,0 +1,47 @@
+# Development Profile Configuration
+server:
+  port: 8083
+
+spring:
+  application:
+    name: change-service
+
+  # H2 Database for Development
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: password
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  # Disable Neo4j for dev
+  neo4j:
+    uri: bolt://localhost:7687
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+
+# Disable Eureka for development
+eureka:
+  client:
+    enabled: false
+
+# Enable debug logging
+logging:
+  level:
+    com.example.plm.change: DEBUG
+    org.springframework.cloud.openfeign: DEBUG

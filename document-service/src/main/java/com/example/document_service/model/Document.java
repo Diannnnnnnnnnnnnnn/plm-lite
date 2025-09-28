@@ -3,7 +3,7 @@ package com.example.document_service.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 
 import jakarta.persistence.Entity;
@@ -32,7 +32,7 @@ public class Document {
     private Stage stage;
     
     @Enumerated(EnumType.STRING)
-    private DocumentStatus status;
+    private Status status;
 
     private String title;
     private String creator;
@@ -89,11 +89,11 @@ public class Document {
         this.stage = stage;
     }
 
-    public DocumentStatus getStatus() {
+    public Status getStatus() {
         return status;
     }
 
-    public void setStatus(DocumentStatus status) {
+    public void setStatus(Status status) {
         this.status = status;
     }
 

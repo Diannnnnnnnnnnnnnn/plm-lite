@@ -1,7 +1,7 @@
 package com.example.bom_service.dto.response;
 
 import com.example.plm.common.model.Stage;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -11,7 +11,7 @@ public class BomResponse {
     private String description;
     private String creator;
     private Stage stage;
-    private DocumentStatus status;
+    private Status status;
     private List<BomItemResponse> items;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
@@ -115,11 +115,11 @@ public class BomResponse {
         this.stage = stage;
     }
 
-    public DocumentStatus getStatus() {
+    public Status getStatus() {
         return status;
     }
 
-    public void setStatus(DocumentStatus status) {
+    public void setStatus(Status status) {
         this.status = status;
     }
 

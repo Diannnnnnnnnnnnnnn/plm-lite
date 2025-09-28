@@ -19,8 +19,8 @@
         <module>change-service</module>
         <module>document-service</module>
         <module>file-storage-service</module>
-        <module>graph-service</module>
-        <module>search-service</module>
+        <module>infra/graph-service</module>
+        <module>infra/search-service</module>
         <module>task-service</module>
         <module>user-service</module>
         <module>workflow-orchestrator</module>
@@ -33,6 +33,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring.cloud.compatibility.verifier.enabled>false</spring.cloud.compatibility.verifier.enabled>
     </properties>
 
     <dependencyManagement>

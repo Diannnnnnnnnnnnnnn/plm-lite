@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 
-@FeignClient(name = "search-service", url = "${search-service.url}")
+@FeignClient(name = "search-service")
 public interface SearchServiceClient {
 
     @PostMapping("/search/index")
@@ -31,7 +31,7 @@ public interface SearchServiceClient {
         private String title;
         private String category;
         private Stage stage;
-        private DocumentStatus status;
+        private Status status;
         private String creator;
         private LocalDateTime createTime;
 
@@ -52,8 +52,8 @@ public interface SearchServiceClient {
         public Stage getStage() { return stage; }
         public void setStage(Stage stage) { this.stage = stage; }
 
-        public DocumentStatus getStatus() { return status; }
-        public void setStatus(DocumentStatus status) { this.status = status; }
+        public Status getStatus() { return status; }
+        public void setStatus(Status status) { this.status = status; }
 
         public String getCreator() { return creator; }
         public void setCreator(String creator) { this.creator = creator; }

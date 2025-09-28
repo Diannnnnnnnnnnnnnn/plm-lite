@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.15.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.2.0">
+  <bpmn:process id="change-approval" name="Change Approval Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Change Submitted">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_CreateReviewTask" name="Create Review Task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-approval-task" />
+        <zeebe:ioMapping>
+          <zeebe:input source="REVIEW" target="taskType" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Activity_ReviewChange" name="Review Change">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=${assigneeId}" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_ReviewDecision" name="Review OK?" default="Flow_Reject">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToApproval</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Reject</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Activity_UpdateToInReview" name="Update Status to In Review">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status" />
+        <zeebe:ioMapping>
+          <zeebe:input source="IN_REVIEW" target="newStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToApproval</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_CreateApprovalTask" name="Create Approval Task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-approval-task" />
+        <zeebe:ioMapping>
+          <zeebe:input source="APPROVAL" target="taskType" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Activity_ApproveChange" name="Approve Change">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=${approverIds}" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_ApprovalDecision" name="Approved?" default="Flow_RejectChange">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approve</bpmn:outgoing>
+      <bpmn:outgoing>Flow_RejectChange</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Activity_UpdateToReleased" name="Update Status to Released">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status" />
+        <zeebe:ioMapping>
+          <zeebe:input source="RELEASED" target="newStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Approve</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_UpdateToRejected" name="Update Status to Rejected">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status" />
+        <zeebe:ioMapping>
+          <zeebe:input source="REJECTED" target="newStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Reject</bpmn:incoming>
+      <bpmn:incoming>Flow_RejectChange</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_NotifyCompletion" name="Notify Completion">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-completion" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_End" name="Process Complete">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Activity_CreateReviewTask" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Activity_CreateReviewTask" targetRef="Activity_ReviewChange" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Activity_ReviewChange" targetRef="Gateway_ReviewDecision" />
+    <bpmn:sequenceFlow id="Flow_ToApproval" name="Yes" sourceRef="Gateway_ReviewDecision" targetRef="Activity_UpdateToInReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=reviewPassed = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Reject" name="No" sourceRef="Gateway_ReviewDecision" targetRef="Activity_UpdateToRejected" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Activity_UpdateToInReview" targetRef="Activity_CreateApprovalTask" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Activity_CreateApprovalTask" targetRef="Activity_ApproveChange" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Activity_ApproveChange" targetRef="Gateway_ApprovalDecision" />
+    <bpmn:sequenceFlow id="Flow_Approve" name="Yes" sourceRef="Gateway_ApprovalDecision" targetRef="Activity_UpdateToReleased">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_RejectChange" name="No" sourceRef="Gateway_ApprovalDecision" targetRef="Activity_UpdateToRejected" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Activity_UpdateToReleased" targetRef="Activity_NotifyCompletion" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Activity_UpdateToRejected" targetRef="Activity_NotifyCompletion" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Activity_NotifyCompletion" targetRef="Event_End" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="change-approval">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="132" y="142" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1" bpmnElement="Activity_CreateReviewTask">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_2" bpmnElement="Activity_ReviewChange">
+        <dc:Bounds x="390" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1" bpmnElement="Gateway_ReviewDecision" isMarkerVisible="true">
+        <dc:Bounds x="545" y="92" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="540" y="68" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_3" bpmnElement="Activity_UpdateToInReview">
+        <dc:Bounds x="660" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_4" bpmnElement="Activity_CreateApprovalTask">
+        <dc:Bounds x="820" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_5" bpmnElement="Activity_ApproveChange">
+        <dc:Bounds x="980" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_2" bpmnElement="Gateway_ApprovalDecision" isMarkerVisible="true">
+        <dc:Bounds x="1135" y="92" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1135" y="68" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_6" bpmnElement="Activity_UpdateToReleased">
+        <dc:Bounds x="1250" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_7" bpmnElement="Activity_UpdateToRejected">
+        <dc:Bounds x="660" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_8" bpmnElement="Activity_NotifyCompletion">
+        <dc:Bounds x="1410" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1" bpmnElement="Event_End">
+        <dc:Bounds x="1572" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1553" y="142" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

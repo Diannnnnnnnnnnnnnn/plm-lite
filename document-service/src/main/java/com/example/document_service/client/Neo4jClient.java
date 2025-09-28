@@ -2,10 +2,10 @@ package com.example.document_service.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 
-@FeignClient(name = "graph-service", url = "${graph-service.url}")
+@FeignClient(name = "graph-service")
 public interface Neo4jClient {
 
     @PostMapping("/graph/documents/upsert")
@@ -16,7 +16,7 @@ public interface Neo4jClient {
         private String masterId;
         private String title;
         private Stage stage;
-        private DocumentStatus status;
+        private Status status;
 
         public DocumentNodePayload() {}
 
@@ -28,7 +28,7 @@ public interface Neo4jClient {
         public void setTitle(String title) { this.title = title; }
         public Stage getStage() { return stage; }
         public void setStage(Stage stage) { this.stage = stage; }
-        public DocumentStatus getStatus() { return status; }
-        public void setStatus(DocumentStatus status) { this.status = status; }
+        public Status getStatus() { return status; }
+        public void setStatus(Status status) { this.status = status; }
     }
 }

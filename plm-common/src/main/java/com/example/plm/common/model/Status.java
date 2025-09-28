@@ -1,6 +1,6 @@
 package com.example.plm.common.model;
 
-public enum DocumentStatus {
+public enum Status {
     DRAFT,
     IN_WORK,
     IN_REVIEW,

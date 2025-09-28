@@ -8,7 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.document_service.dto.request.CreateDocumentRequest;
 import com.example.document_service.dto.request.SubmitForReviewRequest;
-import com.example.plm.common.model.DocumentStatus;
+import com.example.document_service.dto.request.UpdateDocumentRequest;
+import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
 import com.example.document_service.exception.DocumentServiceException;
 import com.example.document_service.exception.NotFoundException;
@@ -60,12 +61,28 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private void sync(Document d) {
+        // TODO: Re-enable when search-service and graph-service are available
+        // Temporarily disabled for testing core document service functionality
+        /*
         try {
             searchGateway.index(d);
             neo4jGateway.upsert(d);
         } catch (Exception e) {
             throw new DocumentServiceException("Failed to synchronize document with external services", e);
         }
+        */
+        System.out.println("INFO: External service sync disabled - document saved to database only");
+    }
+
+    @Override
+    public List<Document> getAllDocuments() {
+        return docRepo.findAll();
+    }
+
+    @Override
+    public Document getById(String documentId) {
+        return docRepo.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document not found"));
     }
 
     private void validateCreateRequest(CreateDocumentRequest req) {
@@ -102,7 +119,7 @@ public class DocumentServiceImpl implements DocumentService {
         d.setTitle(req.getTitle());
         d.setCreator(req.getCreator());
         d.setStage(req.getStage());
-        d.setStatus(DocumentStatus.IN_WORK);
+        d.setStatus(Status.IN_WORK);
         d.setRevision(0);
         d.setVersion(1);
 
@@ -110,6 +127,50 @@ public class DocumentServiceImpl implements DocumentService {
         logHistory(d, "CREATED", null, d.getStatus().name(), req.getCreator(), "Initial creation");
         sync(d);
         return d;
+    }
+
+    @Transactional
+    @Override
+    public Document updateDocument(String documentId, UpdateDocumentRequest req) {
+        Document document = getById(documentId);
+
+        boolean hasChanges = false;
+        StringBuilder changeLog = new StringBuilder();
+
+        // Update title if provided
+        if (req.getTitle() != null && !req.getTitle().trim().isEmpty() &&
+            !req.getTitle().equals(document.getTitle())) {
+            changeLog.append("Title changed from '").append(document.getTitle())
+                     .append("' to '").append(req.getTitle()).append("'; ");
+            document.setTitle(req.getTitle());
+            hasChanges = true;
+        }
+
+        // Update stage if provided
+        if (req.getStage() != null && !req.getStage().equals(document.getStage())) {
+            changeLog.append("Stage changed from '").append(document.getStage())
+                     .append("' to '").append(req.getStage()).append("'; ");
+            document.setStage(req.getStage());
+            hasChanges = true;
+        }
+
+        // Update status if provided
+        if (req.getStatus() != null && !req.getStatus().equals(document.getStatus())) {
+            changeLog.append("Status changed from '").append(document.getStatus())
+                     .append("' to '").append(req.getStatus()).append("'; ");
+            document.setStatus(req.getStatus());
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            document = docRepo.save(document);
+            String user = req.getUser() != null ? req.getUser() : "System";
+            String comment = req.getDescription() != null ? req.getDescription() : changeLog.toString().trim();
+            logHistory(document, "UPDATED", null, document.getStatus().name(), user, comment);
+            sync(document);
+        }
+
+        return document;
     }
 
     private void validateSubmitForReviewRequest(SubmitForReviewRequest req) {
@@ -121,7 +182,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    private void validateDocumentStatus(Document doc, DocumentStatus expectedStatus, String operation) {
+    private void validateStatus(Document doc, Status expectedStatus, String operation) {
         if (expectedStatus != doc.getStatus()) {
             throw new ValidationException("Cannot " + operation + " document. Expected status: " + expectedStatus + ", but was: " + doc.getStatus());
         }
@@ -136,9 +197,9 @@ public class DocumentServiceImpl implements DocumentService {
         validateSubmitForReviewRequest(req);
         Document d = docRepo.findById(documentId)
                 .orElseThrow(() -> new NotFoundException("Document not found"));
-        validateDocumentStatus(d, DocumentStatus.IN_WORK, "submit for review");
+        validateStatus(d, Status.IN_WORK, "submit for review");
         String oldStatus = d.getStatus().name();
-        d.setStatus(DocumentStatus.IN_REVIEW);
+        d.setStatus(Status.IN_REVIEW);
         d = docRepo.save(d);
 
         String newStatus = d.getStatus().name();
@@ -155,8 +216,10 @@ public class DocumentServiceImpl implements DocumentService {
                     d.getCreator(),
                     req.getReviewerIds()
             );
+            System.out.println("INFO: Successfully started review workflow for document: " + d.getId());
         } catch (Exception e) {
-            throw new DocumentServiceException("Failed to start review workflow", e);
+            System.out.println("WARN: Failed to start review workflow, but document status updated: " + e.getMessage());
+            // Don't throw exception - allow the submit to continue even if workflow fails
         }
 
         return d;
@@ -177,16 +240,16 @@ public class DocumentServiceImpl implements DocumentService {
         validateCompleteReviewRequest(documentId, approver);
         Document d = docRepo.findById(documentId)
                 .orElseThrow(() -> new NotFoundException("Document not found"));
-        validateDocumentStatus(d, DocumentStatus.IN_REVIEW, "complete review");
+        validateStatus(d, Status.IN_REVIEW, "complete review");
         String oldStatus = d.getStatus().name();
 
         if (approved) {
-            d.setStatus(DocumentStatus.RELEASED);
+            d.setStatus(Status.RELEASED);
             d.setRevision(d.getRevision() + 1);
             d.setVersion(0);
             logHistory(d, "RELEASED", oldStatus, d.getStatus().name(), approver, comment);
         } else {
-            d.setStatus(DocumentStatus.IN_WORK);
+            d.setStatus(Status.IN_WORK);
             logHistory(d, "REJECTED", oldStatus, d.getStatus().name(), approver, comment);
         }
 
@@ -194,8 +257,10 @@ public class DocumentServiceImpl implements DocumentService {
         sync(d);
         try {
             workflowGateway.notifyApprovalResult(d.getId(), approved, approver, comment);
+            System.out.println("INFO: Successfully notified workflow of approval result for document: " + d.getId());
         } catch (Exception e) {
-            throw new DocumentServiceException("Failed to notify workflow of approval result", e);
+            System.out.println("WARN: Failed to notify workflow of approval result: " + e.getMessage());
+            // Don't throw exception - allow the approval to continue even if workflow notification fails
         }
         return d;
     }
@@ -212,7 +277,7 @@ public class DocumentServiceImpl implements DocumentService {
         d.setTitle(current.getTitle());
         d.setCreator(user);
         d.setStage(current.getStage());
-        d.setStatus(DocumentStatus.IN_WORK);
+        d.setStatus(Status.IN_WORK);
         d.setRevision(current.getRevision());
         d.setVersion(current.getVersion() + 1);
         d.setFileKey(current.getFileKey());

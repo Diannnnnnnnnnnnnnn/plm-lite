@@ -4,7 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "graph-service", url = "http://localhost:8090/graph")
+@FeignClient(name = "graph-service")
 public interface GraphClient {
 
     @PostMapping("/user")

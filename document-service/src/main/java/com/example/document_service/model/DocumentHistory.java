@@ -15,6 +15,7 @@ public class DocumentHistory {
     private String action;
     private String oldValue;
     private String newValue;
+    @Column(name = "created_by")
     private String user;
     private String comment;
     private LocalDateTime timestamp = LocalDateTime.now();
