@@ -1,5 +1,7 @@
 package com.example.plm.workflow.handler;
 
+// Commented out entire TaskWorkerHandler for simplified dev mode without Camunda
+/*
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.spring.client.annotation.JobWorker;
 import org.slf4j.Logger;
@@ -100,3 +102,4 @@ public class TaskWorkerHandler {
         void updateStatus(@PathVariable String id, @RequestBody Map<String, String> statusUpdate);
     }
 }
+*/

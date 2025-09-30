@@ -42,6 +42,9 @@ public class WorkflowController {
         String processInstanceId = workflowService.startDocumentApprovalWorkflow(documentId, creator);
         System.out.println("Started workflow process: " + processInstanceId);
 
+        // Create review tasks for each reviewer
+        workflowService.createReviewTasks(documentId, masterId, version, creator, reviewers);
+
         return ResponseEntity.ok().build();
     }
 

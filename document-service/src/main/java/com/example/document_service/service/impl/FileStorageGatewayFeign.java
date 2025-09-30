@@ -1,9 +1,10 @@
 package com.example.document_service.service.impl;
 
-import com.example.document_service.client.FileStorageClient;
-import com.example.document_service.service.gateway.FileStorageGateway;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.example.document_service.client.FileStorageClient;
+import com.example.document_service.service.gateway.FileStorageGateway;
 
 @Component
 public class FileStorageGatewayFeign implements FileStorageGateway {

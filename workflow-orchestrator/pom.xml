@@ -51,7 +51,8 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Camunda Zeebe -->
+        <!-- Camunda Zeebe - commented out for simplified dev mode -->
+        <!--
         <dependency>
             <groupId>io.camunda</groupId>
             <artifactId>zeebe-client-java</artifactId>
@@ -63,6 +64,7 @@
             <artifactId>spring-boot-starter-camunda</artifactId>
             <version>8.5.5</version>
         </dependency>
+        -->
 
         <!-- Spring Cloud -->
         <dependency>

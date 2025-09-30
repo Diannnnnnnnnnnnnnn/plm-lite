@@ -81,6 +81,52 @@ class TaskService {
       throw error;
     }
   }
+
+  async getReviewTasks(userId) {
+    try {
+      const response = await this.api.get(`/api/tasks/review-tasks/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching review tasks for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async getTasksByDocument(documentId) {
+    try {
+      const response = await this.api.get(`/api/tasks/by-document/${documentId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching tasks for document ${documentId}:`, error);
+      throw error;
+    }
+  }
+
+  async addTaskSignoff(taskId, userId, action, comments) {
+    try {
+      const response = await this.api.post(`/api/tasks/${taskId}/signoff`, {
+        userId,
+        action,
+        comments
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding signoff to task ${taskId}:`, error);
+      throw error;
+    }
+  }
+
+  async updateTaskStatus(taskId, status) {
+    try {
+      const response = await this.api.put(`/api/tasks/${taskId}/status`, {
+        status
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating task ${taskId} status:`, error);
+      throw error;
+    }
+  }
 }
 
 const taskServiceInstance = new TaskService();

@@ -102,4 +102,20 @@ public class TaskController {
         List<TaskResponse> tasks = taskService.getMyActiveTasks(userId);
         return ResponseEntity.ok(tasks);
     }
+
+    @GetMapping("/by-document/{documentId}")
+    public ResponseEntity<List<TaskResponse>> getTasksByDocument(@PathVariable String documentId) {
+        List<TaskResponse> tasks = taskService.getTasksByContext("DOCUMENT", documentId);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @GetMapping("/review-tasks/{userId}")
+    public ResponseEntity<List<TaskResponse>> getReviewTasks(@PathVariable String userId) {
+        // Get all active tasks for this user and filter for REVIEW type
+        List<TaskResponse> allTasks = taskService.getMyActiveTasks(userId);
+        List<TaskResponse> reviewTasks = allTasks.stream()
+                .filter(task -> task.getTaskType() == com.example.plm.task.model.TaskType.REVIEW)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(reviewTasks);
+    }
 }

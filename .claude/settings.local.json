@@ -43,7 +43,19 @@
       "Bash(Stop-Process -Id 20816 -Force)",
       "Bash(unset https_proxy)",
       "Bash(Stop-Process -Id 11560 -Force)",
-      "Bash(Stop-Process -Id 8060 -Force)"
+      "Bash(Stop-Process -Id 8060 -Force)",
+      "Bash(git --version)",
+      "Bash(\"C:\\Program Files\\Git\\bin\\git.exe\" --version)",
+      "Bash(where git)",
+      "Bash(Stop-Process -Id 9052 -Force)",
+      "Bash(powershell:*)",
+      "Bash(sc query:*)",
+      "Bash(set)",
+      "Bash(unset:*)",
+      "Bash(export HTTP_PROXY=\"\")",
+      "Bash(export HTTPS_PROXY=\"\")",
+      "Bash(export NO_PROXY=\"localhost,127.0.0.1,::1\")",
+      "Bash(export:*)"
     ],
     "deny": [],
     "ask": []

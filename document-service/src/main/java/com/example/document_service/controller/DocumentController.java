@@ -196,6 +196,18 @@ public class DocumentController {
         return searchResult;
     }
 
+    @GetMapping("/pending-reviews/{reviewerId}")
+    public List<DocumentResponse> getPendingReviewsForUser(@PathVariable String reviewerId) {
+        List<Document> documents = documentService.getAllDocuments();
+        List<Document> pendingReviews = documents.stream()
+                .filter(doc -> "IN_REVIEW".equals(doc.getStatus().name()))
+                .collect(Collectors.toList());
+
+        return pendingReviews.stream()
+                        .map(DocumentMapper::toResponse)
+                        .collect(Collectors.toList());
+    }
+
     private MediaType getContentTypeByFilename(String filename) {
         if (filename == null) {
             return MediaType.APPLICATION_OCTET_STREAM;

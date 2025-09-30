@@ -11,6 +11,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
+// Temporarily disabled - Redis not available
+/*
 @Configuration
 @EnableCaching
 public class RedisConfig {
@@ -26,3 +28,4 @@ public class RedisConfig {
         return RedisCacheManager.builder(redisConnectionFactory).cacheDefaults(config).build();
     }
 }
+*/

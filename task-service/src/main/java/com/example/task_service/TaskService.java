@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,7 +25,7 @@ public class TaskService {
     @Autowired
     private UserClient userClient; // Inject Feign Client
 
-    @Autowired
+    @Autowired(required = false)
     private TaskSearchRepository taskSearchRepository;
 
     @Autowired
@@ -63,10 +64,12 @@ public class TaskService {
                 fileMetadataRepository.save(metadata);
             }
         }
-        // Sync with Elasticsearch
-        taskSearchRepository.save(new TaskDocument(
-            savedTask.getId(), savedTask.getName(), savedTask.getDescription(), savedTask.getUserId()
-        ));
+        // Sync with Elasticsearch (if available)
+        if (taskSearchRepository != null) {
+            taskSearchRepository.save(new TaskDocument(
+                savedTask.getId(), savedTask.getName(), savedTask.getDescription(), savedTask.getUserId()
+            ));
+        }
 
         // Send to graph service
         graphClient.createTask(String.valueOf(savedTask.getId()), savedTask.getName());

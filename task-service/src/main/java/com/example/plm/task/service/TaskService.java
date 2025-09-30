@@ -1,5 +1,6 @@
 package com.example.plm.task.service;
 
+import com.example.plm.task.client.DocumentServiceClient;
 import com.example.plm.task.dto.CreateTaskRequest;
 import com.example.plm.task.dto.TaskResponse;
 import com.example.plm.task.model.*;
@@ -30,6 +31,9 @@ public class TaskService {
 
     @Autowired
     private TaskNodeRepository taskNodeRepository;
+
+    @Autowired(required = false)
+    private DocumentServiceClient documentServiceClient;
 
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request) {
@@ -119,15 +123,55 @@ public class TaskService {
 
         taskSignoffRepository.save(signoff);
 
+        // Get the task to check if it's a review task
+        Optional<Task> taskOpt = taskRepository.findById(taskId);
+
         if (action == SignoffAction.APPROVED) {
             long requiredApprovals = taskSignoffRepository
                 .countByTaskIdAndSignoffActionAndIsRequired(taskId, SignoffAction.APPROVED, true);
 
             if (requiredApprovals >= getRequiredApprovalsForTask(taskId)) {
                 updateTaskStatus(taskId, TaskStatus.COMPLETED);
+
+                // If this is a REVIEW task for a DOCUMENT, notify document service
+                if (taskOpt.isPresent() && documentServiceClient != null) {
+                    Task task = taskOpt.get();
+                    if (task.getTaskType() == TaskType.REVIEW && "DOCUMENT".equals(task.getContextType())) {
+                        notifyDocumentReviewComplete(task.getContextId(), true, userId, comments);
+                    }
+                }
             }
         } else if (action == SignoffAction.REJECTED) {
             updateTaskStatus(taskId, TaskStatus.CANCELLED);
+
+            // If this is a REVIEW task for a DOCUMENT, notify document service
+            if (taskOpt.isPresent() && documentServiceClient != null) {
+                Task task = taskOpt.get();
+                if (task.getTaskType() == TaskType.REVIEW && "DOCUMENT".equals(task.getContextType())) {
+                    notifyDocumentReviewComplete(task.getContextId(), false, userId, comments);
+                }
+            }
+        }
+    }
+
+    private void notifyDocumentReviewComplete(String documentId, boolean approved, String userId, String comments) {
+        try {
+            // Create inline request class to avoid dependency issues
+            Object request = new Object() {
+                public Boolean getApproved() { return approved; }
+                public String getUser() { return userId; }
+                public String getComment() { return comments != null ? comments : ""; }
+            };
+
+            // Using reflection to call the method since we don't have direct access to the request class
+            java.lang.reflect.Method method = documentServiceClient.getClass().getMethod(
+                "completeReview", String.class, Object.class);
+            method.invoke(documentServiceClient, documentId, request);
+
+            System.out.println("INFO: Successfully notified document service of review completion for document: " + documentId);
+        } catch (Exception e) {
+            System.err.println("WARN: Failed to notify document service of review completion: " + e.getMessage());
+            // Don't throw exception - task signoff should complete even if notification fails
         }
     }
 
@@ -208,6 +252,9 @@ class TaskServiceDev {
     @Autowired
     private TaskSignoffRepository taskSignoffRepository;
 
+    @Autowired(required = false)
+    private DocumentServiceClient documentServiceClient;
+
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request) {
         String taskId = UUID.randomUUID().toString();
@@ -261,10 +308,50 @@ class TaskServiceDev {
 
         taskSignoffRepository.save(signoff);
 
+        // Get the task to check if it's a review task
+        Optional<Task> taskOpt = taskRepository.findById(taskId);
+
         if (action == SignoffAction.APPROVED) {
             updateTaskStatus(taskId, TaskStatus.COMPLETED);
+
+            // If this is a REVIEW task for a DOCUMENT, notify document service
+            if (taskOpt.isPresent() && documentServiceClient != null) {
+                Task task = taskOpt.get();
+                if (task.getTaskType() == TaskType.REVIEW && "DOCUMENT".equals(task.getContextType())) {
+                    notifyDocumentReviewComplete(task.getContextId(), true, userId, comments);
+                }
+            }
         } else if (action == SignoffAction.REJECTED) {
             updateTaskStatus(taskId, TaskStatus.CANCELLED);
+
+            // If this is a REVIEW task for a DOCUMENT, notify document service
+            if (taskOpt.isPresent() && documentServiceClient != null) {
+                Task task = taskOpt.get();
+                if (task.getTaskType() == TaskType.REVIEW && "DOCUMENT".equals(task.getContextType())) {
+                    notifyDocumentReviewComplete(task.getContextId(), false, userId, comments);
+                }
+            }
+        }
+    }
+
+    private void notifyDocumentReviewComplete(String documentId, boolean approved, String userId, String comments) {
+        try {
+            // Create inline request class to avoid dependency issues
+            Object request = new Object() {
+                public Boolean getApproved() { return approved; }
+                public String getUser() { return userId; }
+                public String getComment() { return comments != null ? comments : ""; }
+            };
+
+            // Using reflection to call the method since we don't have direct access to the request class
+            java.lang.reflect.Method method = documentServiceClient.getClass().getMethod(
+                "completeReview", String.class, Object.class);
+            method.invoke(documentServiceClient, documentId, request);
+
+            System.out.println("INFO: Successfully notified document service of review completion for document: " + documentId);
+        } catch (Exception e) {
+            System.err.println("WARN: Failed to notify document service of review completion: " + e.getMessage());
+            // Don't throw exception - task signoff should complete even if notification fails
         }
     }
 
