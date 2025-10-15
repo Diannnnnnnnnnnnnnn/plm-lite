@@ -9,6 +9,7 @@ import TaskManager from "./components/Tasks/TaskManager";
 import ChangeManager from "./components/Changes/ChangeManager";
 import UserList from "./components/UserList";
 import GlobalSearch from './components/GlobalSearch';
+import Settings from './components/Settings/Settings';
 import Auth from "./components/Auth/Auth";
 
 const theme = createTheme({
@@ -45,6 +46,52 @@ const theme = createTheme({
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState('Dashboard');
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Check if user is already logged in on mount
+  React.useEffect(() => {
+    const loadUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setCurrentUser(userData);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Error parsing stored user data:', error);
+          localStorage.removeItem('user');
+        }
+      }
+    };
+
+    loadUser();
+
+    // Listen for storage changes (when user profile is updated in Settings)
+    const handleStorageChange = () => {
+      loadUser();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleLogin = () => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setCurrentPage('Dashboard');
+  };
 
   const renderContent = () => {
     switch (currentPage) {
@@ -62,6 +109,8 @@ function App() {
         return <UserList />;
       case 'Search':
         return <GlobalSearch />;
+      case 'Settings':
+        return <Settings />;
       default:
         return <Dashboard />;
     }
@@ -71,7 +120,7 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Auth onLogin={() => setIsAuthenticated(true)} />
+        <Auth onLogin={handleLogin} />
       </ThemeProvider>
     );
   }
@@ -79,7 +128,12 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <MainLayout currentPage={currentPage} onPageChange={setCurrentPage}>
+      <MainLayout
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      >
         {renderContent()}
       </MainLayout>
     </ThemeProvider>

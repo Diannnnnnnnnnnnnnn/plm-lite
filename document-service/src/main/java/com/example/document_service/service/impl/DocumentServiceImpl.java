@@ -122,6 +122,7 @@ public class DocumentServiceImpl implements DocumentService {
         d.setStatus(Status.IN_WORK);
         d.setRevision(0);
         d.setVersion(1);
+        d.setBomId(req.getBomId());  // Set related BOM ID
 
         d = docRepo.save(d);
         logHistory(d, "CREATED", null, d.getStatus().name(), req.getCreator(), "Initial creation");
@@ -316,5 +317,24 @@ public class DocumentServiceImpl implements DocumentService {
         d.setFileKey(fileKey);
         docRepo.save(d);
         logHistory(d, "FILE_ATTACHED", oldKey, fileKey, user, "File stored via file-storage service");
+    }
+
+    @Override
+    @Transactional
+    public void deleteDocument(String documentId) {
+        Document document = docRepo.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document not found: " + documentId));
+
+        // Delete all history records for this document
+        List<DocumentHistory> historyList = historyRepo.findByDocumentIdOrderByTimestampDesc(documentId);
+        historyRepo.deleteAll(historyList);
+
+        // Delete the document
+        docRepo.delete(document);
+    }
+
+    @Override
+    public List<Document> getDocumentsByBomId(String bomId) {
+        return docRepo.findByBomId(bomId);
     }
 }

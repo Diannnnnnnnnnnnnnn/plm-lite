@@ -49,6 +49,8 @@ import {
   ViewList as ListViewIcon
 } from '@mui/icons-material';
 import TreeView from './TreeView';
+import bomService from '../../services/bomService';
+import documentService from '../../services/documentService';
 
 const mockBOMHierarchy = [
   {
@@ -239,17 +241,21 @@ const relatedDocuments = {
 };
 
 export default function BOMManager() {
-  const [boms, setBOMs] = useState(mockBOMHierarchy);
+  const [boms, setBOMs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterStage, setFilterStage] = useState('All');
   const [currentTab, setCurrentTab] = useState(0);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const [filteredBOMs, setFilteredBOMs] = useState(mockBOMHierarchy);
+  const [filteredBOMs, setFilteredBOMs] = useState([]);
   const [detailsTab, setDetailsTab] = useState(0);
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedParentBOM, setSelectedParentBOM] = useState(null);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
+  const [bomDocuments, setBomDocuments] = useState({});  // Map of bomId -> documents array
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
   const [newItem, setNewItem] = useState({
     partNumber: '',
     description: '',
@@ -258,9 +264,51 @@ export default function BOMManager() {
     reference: ''
   });
 
+  // Load BOMs from API on component mount
+  useEffect(() => {
+    const loadBOMs = async () => {
+      try {
+        const bomsData = await bomService.getAllBoms();
+        console.log('Loaded BOMs from API:', bomsData);
+        // Build hierarchy from flat BOM list
+        const bomHierarchy = buildBOMHierarchy(bomsData);
+        setBOMs(bomHierarchy);
+      } catch (error) {
+        console.error('Error loading BOMs:', error);
+      }
+    };
+    loadBOMs();
+  }, []);
+
+  // Helper function to build hierarchy from flat BOM list
+  const buildBOMHierarchy = (flatBOMs) => {
+    const bomMap = {};
+    const rootBOMs = [];
+
+    // First pass: create a map of all BOMs with empty children arrays
+    flatBOMs.forEach(bom => {
+      bomMap[bom.id] = { ...bom, children: [] };
+    });
+
+    // Second pass: build the hierarchy
+    flatBOMs.forEach(bom => {
+      if (bom.parentId) {
+        // This is a child BOM, add it to its parent's children
+        if (bomMap[bom.parentId]) {
+          bomMap[bom.parentId].children.push(bomMap[bom.id]);
+        }
+      } else {
+        // This is a root BOM
+        rootBOMs.push(bomMap[bom.id]);
+      }
+    });
+
+    return rootBOMs;
+  };
+
   // Function to get related documents for a BOM
   const getRelatedDocuments = (bomId) => {
-    return relatedDocuments[bomId] || [];
+    return bomDocuments[bomId] || [];
   };
 
   // Helper function to recursively add child BOM
@@ -298,7 +346,7 @@ export default function BOMManager() {
     documentId: '',
     description: '',
     creator: 'Current User',
-    stage: 'DESIGN',
+    stage: 'CONCEPTUAL_DESIGN',
     status: 'DRAFT',
     parentBOMId: null
   });
@@ -333,6 +381,38 @@ export default function BOMManager() {
     setFilteredBOMs(filtered);
   }, [boms, filterStatus, filterStage, searchTerm]);
 
+  // Load documents for a specific BOM
+  const loadBOMDocuments = async (bomId) => {
+    if (!bomId) return;
+
+    // Check if documents are already loaded
+    if (bomDocuments[bomId]) return;
+
+    try {
+      setLoadingDocuments(true);
+      const documents = await documentService.getDocumentsByBomId(bomId);
+      setBomDocuments(prev => ({
+        ...prev,
+        [bomId]: documents
+      }));
+    } catch (error) {
+      console.error('Error loading documents for BOM:', error);
+      setBomDocuments(prev => ({
+        ...prev,
+        [bomId]: []
+      }));
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  // Load documents when selectedNode or detailsTab changes
+  useEffect(() => {
+    if (selectedNode && detailsTab === 1) {
+      loadBOMDocuments(selectedNode.id);
+    }
+  }, [selectedNode, detailsTab]);
+
   const handleNodeSelect = (node) => {
     setSelectedNode(node);
   };
@@ -359,39 +439,44 @@ export default function BOMManager() {
     handleContextMenuClose();
   };
 
-  const handleCreateBOM = () => {
-    const newId = newBOM.parentBOMId ?
-      `${newBOM.parentBOMId}-${Date.now().toString().slice(-3)}` :
-      `BOM-${Date.now().toString().slice(-3)}`;
+  const handleDocumentClick = (document) => {
+    setSelectedDocument(document);
+    setDocumentDetailsOpen(true);
+  };
 
-    const bomToAdd = {
-      ...newBOM,
-      id: newId,
-      createTime: new Date().toISOString(),
-      updateTime: new Date().toISOString(),
-      items: [],
-      children: []
-    };
+  const handleCreateBOM = async () => {
+    try {
+      const bomData = {
+        documentId: newBOM.documentId,
+        description: newBOM.description,
+        creator: newBOM.creator,
+        stage: newBOM.stage,
+        parentId: selectedParentBOM?.id || null,
+        items: []
+      };
 
-    if (newBOM.parentBOMId) {
-      // Add as child to parent BOM
-      const updatedBOMs = addChildBOM(boms, newBOM.parentBOMId, bomToAdd);
-      setBOMs(updatedBOMs);
-    } else {
-      // Add as root level BOM
-      setBOMs([...boms, bomToAdd]);
+      const createdBOM = await bomService.createBom(bomData);
+      console.log('BOM created successfully:', createdBOM);
+
+      // Refresh the BOM list
+      const updatedBOMs = await bomService.getAllBoms();
+      const bomHierarchy = buildBOMHierarchy(updatedBOMs);
+      setBOMs(bomHierarchy);
+
+      setNewBOM({
+        documentId: '',
+        description: '',
+        creator: 'Current User',
+        stage: 'CONCEPTUAL_DESIGN',
+        status: 'DRAFT',
+        parentBOMId: null
+      });
+      setSelectedParentBOM(null);
+      setCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating BOM:', error);
+      alert('Failed to create BOM: ' + (error.response?.data?.message || error.message));
     }
-
-    setNewBOM({
-      documentId: '',
-      description: '',
-      creator: 'Current User',
-      stage: 'DESIGN',
-      status: 'DRAFT',
-      parentBOMId: null
-    });
-    setSelectedParentBOM(null);
-    setCreateDialogOpen(false);
   };
 
   return (
@@ -659,10 +744,13 @@ export default function BOMManager() {
                   {detailsTab === 1 && (
                     // Documents Tab
                     getRelatedDocuments(selectedNode.id).length > 0 ? (
-                      <List>
+                      <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                         {getRelatedDocuments(selectedNode.id).map((document) => (
                           <ListItem key={document.id} disablePadding>
-                            <ListItemButton sx={{ mb: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                            <ListItemButton
+                              sx={{ mb: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}
+                              onClick={() => handleDocumentClick(document)}
+                            >
                               <ListItemIcon>
                                 <DocumentIcon color="primary" />
                               </ListItemIcon>
@@ -855,10 +943,12 @@ export default function BOMManager() {
                 onChange={(e) => setNewBOM({...newBOM, stage: e.target.value})}
                 label="Stage"
               >
-                <MenuItem value="DESIGN">Design</MenuItem>
-                <MenuItem value="DEVELOPMENT">Development</MenuItem>
-                <MenuItem value="PRODUCTION">Production</MenuItem>
-                <MenuItem value="OBSOLETE">Obsolete</MenuItem>
+                <MenuItem value="CONCEPTUAL_DESIGN">Conceptual Design</MenuItem>
+                <MenuItem value="PRELIMINARY_DESIGN">Preliminary Design</MenuItem>
+                <MenuItem value="DETAILED_DESIGN">Detailed Design</MenuItem>
+                <MenuItem value="MANUFACTURING">Manufacturing</MenuItem>
+                <MenuItem value="IN_SERVICE">In Service</MenuItem>
+                <MenuItem value="RETIRED">Retired</MenuItem>
               </Select>
             </FormControl>
             <FormControl fullWidth variant="outlined" margin="normal">
@@ -1021,18 +1111,122 @@ export default function BOMManager() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setItemsDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => {
-            // Add item logic here
-            console.log('Adding item:', newItem);
-            setNewItem({
-              partNumber: '',
-              description: '',
-              quantity: 1,
-              unit: 'EA',
-              reference: ''
-            });
-            setItemsDialogOpen(false);
+          <Button variant="contained" onClick={async () => {
+            try {
+              // Validate input
+              if (!newItem.partNumber || !newItem.description) {
+                alert('Part Number and Description are required');
+                return;
+              }
+
+              // Get current BOM data
+              const currentItems = selectedNode.items || [];
+
+              // Add new item to existing items
+              const updatedItems = [
+                ...currentItems,
+                {
+                  partNumber: newItem.partNumber,
+                  description: newItem.description,
+                  quantity: newItem.quantity,
+                  unit: newItem.unit,
+                  reference: newItem.reference
+                }
+              ];
+
+              // Update BOM with new items
+              const updateData = {
+                description: selectedNode.description,
+                stage: selectedNode.stage,
+                items: updatedItems
+              };
+
+              await bomService.updateBom(selectedNode.id, updateData);
+
+              // Refresh the BOM list
+              const updatedBOMs = await bomService.getAllBoms();
+              const bomHierarchy = buildBOMHierarchy(updatedBOMs);
+              setBOMs(bomHierarchy);
+
+              // Update selected node with new items
+              const updatedNode = updatedBOMs.find(b => b.id === selectedNode.id);
+              if (updatedNode) {
+                setSelectedNode(updatedNode);
+              }
+
+              // Reset form
+              setNewItem({
+                partNumber: '',
+                description: '',
+                quantity: 1,
+                unit: 'EA',
+                reference: ''
+              });
+              setItemsDialogOpen(false);
+            } catch (error) {
+              console.error('Error adding item:', error);
+              alert('Failed to add item: ' + (error.response?.data?.message || error.message));
+            }
           }}>Add Item</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Document Details Dialog */}
+      <Dialog
+        open={documentDetailsOpen}
+        onClose={() => setDocumentDetailsOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Document Details
+        </DialogTitle>
+        <DialogContent>
+          {selectedDocument && (
+            <Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="h6">{selectedDocument.title}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    ID: {selectedDocument.masterId || selectedDocument.id}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Status</Typography>
+                  <Chip
+                    label={selectedDocument.status}
+                    color={getStatusColor(selectedDocument.status)}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Stage</Typography>
+                  <Chip
+                    label={selectedDocument.stage}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Version</Typography>
+                  <Typography variant="body1">v{selectedDocument.revision}.{selectedDocument.version}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Creator</Typography>
+                  <Typography variant="body1">{selectedDocument.creator}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="textSecondary">Created</Typography>
+                  <Typography variant="body1">
+                    {new Date(selectedDocument.createTime).toLocaleString()}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocumentDetailsOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

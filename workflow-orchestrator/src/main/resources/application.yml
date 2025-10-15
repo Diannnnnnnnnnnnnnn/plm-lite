@@ -30,6 +30,12 @@ spring:
       enabled: true
       path: /h2-console
 
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
 ---
 spring:
   config:

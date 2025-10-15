@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 // Feign Client to communicate with user-controller
 
-@FeignClient(name = "user-service")
+@FeignClient(name = "user-service", url = "http://localhost:8083")
 public interface UserClient {
     @GetMapping("/users/{id}")
     User getUserById(@PathVariable(name = "id") Long id); // <== add `name = "id"`

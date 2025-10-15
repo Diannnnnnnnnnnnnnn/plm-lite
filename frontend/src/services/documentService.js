@@ -85,7 +85,8 @@ class DocumentService {
         creator: user,
         stage: stageMapping[documentData.stage] || 'CONCEPTUAL_DESIGN',
         category: documentData.description || 'General',
-        masterId: documentData.documentNumber || null
+        masterId: documentData.documentNumber || null,
+        bomId: documentData.relatedProduct || null  // Add BOM ID
       };
 
       const createResponse = await this.api.post('/documents', backendDocumentData);
@@ -165,12 +166,36 @@ class DocumentService {
     }
   }
 
+  async completeReview(id, approved, user, comment) {
+    try {
+      const response = await this.api.post(`/documents/${id}/review-complete`, {
+        approved: approved,
+        user: user,
+        comment: comment
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error completing review for document ${id}:`, error);
+      throw error;
+    }
+  }
+
   async searchDocuments(searchParams) {
     try {
       const response = await this.api.post('/documents/search', searchParams);
       return response.data;
     } catch (error) {
       console.error('Error searching documents:', error);
+      throw error;
+    }
+  }
+
+  async getDocumentsByBomId(bomId) {
+    try {
+      const response = await this.api.get(`/documents/bom/${bomId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching documents for BOM ${bomId}:`, error);
       throw error;
     }
   }

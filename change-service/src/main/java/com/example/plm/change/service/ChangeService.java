@@ -136,7 +136,7 @@ public class ChangeService {
     }
 
     @Transactional
-    public ChangeResponse submitForReview(String changeId) {
+    public ChangeResponse submitForReview(String changeId, List<String> reviewerIds) {
         Change change = changeRepository.findById(changeId)
             .orElseThrow(() -> new RuntimeException("Change not found"));
 

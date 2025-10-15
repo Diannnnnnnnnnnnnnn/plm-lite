@@ -20,4 +20,6 @@ public interface DocumentService {
     Document updateStage(String documentId, Stage stage, String user, String comment);
     List<DocumentHistory> history(String documentId);
     void attachFileKey(String documentId, String fileKey, String user);
+    void deleteDocument(String documentId);
+    List<Document> getDocumentsByBomId(String bomId);
 }

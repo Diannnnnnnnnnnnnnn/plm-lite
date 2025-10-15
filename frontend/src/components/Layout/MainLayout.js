@@ -49,7 +49,7 @@ const navigationItems = [
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
 ];
 
-export default function MainLayout({ children, currentPage = 'Dashboard', onPageChange }) {
+export default function MainLayout({ children, currentPage = 'Dashboard', onPageChange, currentUser: userProp, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const theme = useTheme();
@@ -68,29 +68,56 @@ export default function MainLayout({ children, currentPage = 'Dashboard', onPage
   };
 
   const handleLogout = () => {
-    console.log('User logout');
     handleUserMenuClose();
-    // Add logout logic here - redirect to login, clear auth state, etc.
+    if (onLogout) {
+      onLogout();
+    }
   };
 
   const handleProfile = () => {
-    console.log('Open user profile');
     handleUserMenuClose();
-    // Add profile management logic here
+    if (onPageChange) {
+      onPageChange('Settings');
+    }
   };
 
   const handleSettings = () => {
-    console.log('Open user settings');
     handleUserMenuClose();
-    // Add settings logic here
+    if (onPageChange) {
+      onPageChange('Settings');
+    }
   };
 
-  // Mock user data - in real app this would come from auth context/props
+  // Map user data from auth to display format
+  const getUserDisplayName = (user) => {
+    if (!user) return 'Guest';
+    if (user.name) return user.name;
+    if (user.username) {
+      // Capitalize username
+      return user.username.charAt(0).toUpperCase() + user.username.slice(1);
+    }
+    return 'User';
+  };
+
+  const getUserEmail = (user) => {
+    if (!user) return '';
+    if (user.email) return user.email;
+    if (user.username) return `${user.username}@plm-lite.local`;
+    return '';
+  };
+
+  const getUserRole = (user) => {
+    if (!user || !user.roles) return 'User';
+    // Use the first role, capitalize it
+    const role = user.roles[0] || 'USER';
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  };
+
   const currentUser = {
-    name: 'Guo Dian',
-    email: 'guo.dian@company.com',
-    avatar: '', // Empty string will show initials
-    role: 'Engineer'
+    name: getUserDisplayName(userProp),
+    email: getUserEmail(userProp),
+    avatar: userProp?.avatar || '',
+    role: getUserRole(userProp)
   };
 
   const getUserInitials = (name) => {

@@ -56,6 +56,24 @@ public class TaskController {
         taskService.deleteTask(id);
     }
 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Task> updateTaskStatus(@PathVariable Long id, @RequestBody Map<String, String> statusUpdate) {
+        Optional<Task> optionalTask = taskService.getTaskById(id);
+        if (optionalTask.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Task task = optionalTask.get();
+        String newStatus = statusUpdate.get("status");
+        if (newStatus != null) {
+            task.setTaskStatus(newStatus);
+            Task updatedTask = taskService.updateTask(id, task);
+            return ResponseEntity.ok(updatedTask);
+        }
+
+        return ResponseEntity.badRequest().build();
+    }
+
     @PostMapping("/create")
     public ResponseEntity<Task> createTask(
             @RequestParam String name,

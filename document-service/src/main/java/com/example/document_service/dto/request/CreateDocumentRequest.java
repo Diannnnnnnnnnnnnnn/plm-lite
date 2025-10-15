@@ -8,6 +8,7 @@ public class CreateDocumentRequest {
     private String creator;
     private String category;
     private Stage stage;
+    private String bomId;  // Related BOM ID
 
     public CreateDocumentRequest() {
     }
@@ -50,6 +51,14 @@ public class CreateDocumentRequest {
 
     public void setStage(Stage stage) {
         this.stage = stage;
+    }
+
+    public String getBomId() {
+        return bomId;
+    }
+
+    public void setBomId(String bomId) {
+        this.bomId = bomId;
     }
 
     @Override

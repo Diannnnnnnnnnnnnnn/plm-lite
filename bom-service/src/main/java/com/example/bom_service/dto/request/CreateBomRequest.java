@@ -8,6 +8,7 @@ public class CreateBomRequest {
     private String description;
     private String creator;
     private Stage stage;
+    private String parentId;
     private List<BomItemRequest> items;
 
     public static class BomItemRequest {
@@ -98,5 +99,13 @@ public class CreateBomRequest {
 
     public void setItems(List<BomItemRequest> items) {
         this.items = items;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(String parentId) {
+        this.parentId = parentId;
     }
 }

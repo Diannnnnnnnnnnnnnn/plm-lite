@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReviewerSelectionDialog from '../Documents/ReviewerSelectionDialog';
 import {
   Box,
   Typography,
@@ -39,9 +40,11 @@ import {
 } from '@mui/material';
 import documentService from '../../services/documentService';
 import bomService from '../../services/bomService';
+import changeService from '../../services/changeService';
 import {
   Add as AddIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Visibility as ViewIcon,
   MoreVert as MoreVertIcon,
   PlayArrow as SubmitIcon,
@@ -130,8 +133,8 @@ const getClassColor = (changeClass) => {
 };
 
 export default function ChangeManager() {
-  const [changes, setChanges] = useState(mockChanges);
-  const [filteredChanges, setFilteredChanges] = useState(mockChanges);
+  const [changes, setChanges] = useState([]);
+  const [filteredChanges, setFilteredChanges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentTab, setCurrentTab] = useState(0);
@@ -143,6 +146,11 @@ export default function ChangeManager() {
   const [filterClass, setFilterClass] = useState('All');
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
 
+  // Load changes on component mount
+  useEffect(() => {
+    loadChanges();
+  }, []);
+
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -150,6 +158,21 @@ export default function ChangeManager() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const loadChanges = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await changeService.getAllChanges();
+      console.log('Loaded changes from API:', data);
+      setChanges(data);
+    } catch (error) {
+      console.error('Error loading changes:', error);
+      setError('Failed to load changes. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -166,12 +189,14 @@ export default function ChangeManager() {
   const [documentSearchTerm, setDocumentSearchTerm] = useState('');
   const [bomSearchTerm, setBomSearchTerm] = useState('');
   const [expandedBOMs, setExpandedBOMs] = useState(new Set());
+  const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
+  const [changeToReview, setChangeToReview] = useState(null);
 
   const [newChange, setNewChange] = useState({
     title: '',
     changeClass: 'Minor',
     product: '',
-    stage: 'DESIGN',
+    stage: 'CONCEPTUAL_DESIGN',
     changeReason: '',
     changeDocument: '',
     selectedDocumentInfo: null,
@@ -352,8 +377,37 @@ export default function ChangeManager() {
     setSelectedChange(null);
   };
 
-  const handleChangeClick = (change) => {
-    setSelectedChangeForDetails(change);
+  const handleChangeClick = async (change) => {
+    // Fetch related BOM and document names
+    let enrichedChange = { ...change };
+
+    try {
+      // Fetch BOM name if product ID exists
+      if (change.product) {
+        try {
+          const bom = await bomService.getBomById(change.product);
+          enrichedChange.productName = bom.description || bom.documentId;
+        } catch (error) {
+          console.error('Error fetching BOM:', error);
+          enrichedChange.productName = change.product;
+        }
+      }
+
+      // Fetch document name if changeDocument ID exists
+      if (change.changeDocument) {
+        try {
+          const doc = await documentService.getDocumentById(change.changeDocument);
+          enrichedChange.documentName = doc.title || doc.masterId;
+        } catch (error) {
+          console.error('Error fetching document:', error);
+          enrichedChange.documentName = change.changeDocument;
+        }
+      }
+    } catch (error) {
+      console.error('Error enriching change data:', error);
+    }
+
+    setSelectedChangeForDetails(enrichedChange);
     setChangeDetailsOpen(true);
   };
 
@@ -363,44 +417,101 @@ export default function ChangeManager() {
   };
 
   const handleSubmitForReview = async (changeId) => {
-    // API call to submit for review
-    console.log('Submitting change for review:', changeId);
-    handleMenuClose();
+    setChangeToReview(changeId);
+    setReviewerDialogOpen(true);
+  };
+
+  const handleReviewerSelection = async (reviewerIds) => {
+    try {
+      const reviewData = {
+        user: localStorage.getItem('username') || 'System User',
+        reviewerIds: reviewerIds
+      };
+
+      console.log('Submitting change for review:', changeToReview, 'with reviewers:', reviewerIds);
+      await changeService.submitForReview(changeToReview, reviewData);
+
+      await loadChanges();
+      setChangeDetailsOpen(false);
+      setReviewerDialogOpen(false);
+      alert('Change submitted for review successfully');
+    } catch (error) {
+      console.error('Error submitting change for review:', error);
+      alert(`Failed to submit change for review: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   const handleApproveChange = async (changeId) => {
-    // API call to approve change
-    console.log('Approving change:', changeId);
-    handleMenuClose();
+    try {
+      setLoading(true);
+      console.log('Approving change:', changeId);
+      await changeService.approveChange(changeId);
+      await loadChanges(); // Reload to get updated status
+      handleMenuClose();
+    } catch (error) {
+      console.error('Error approving change:', error);
+      setError('Failed to approve change: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateChange = () => {
-    const change = {
-      id: `CHG-${String(Date.now()).slice(-3)}`,
-      title: newChange.title,
-      changeClass: newChange.changeClass,
-      product: newChange.product,
-      stage: newChange.stage,
-      changeReason: newChange.changeReason,
-      changeDocument: newChange.changeDocument,
-      status: 'DRAFT',
-      creator: 'Current User',
-      createTime: new Date().toISOString()
-    };
+  const handleDeleteChange = async (changeId) => {
+    if (!window.confirm('Are you sure you want to delete this change? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      setLoading(true);
+      console.log('Deleting change:', changeId);
+      // Add delete API call when backend implements it
+      // await changeService.deleteChange(changeId);
+      await loadChanges();
+      setChangeDetailsOpen(false);
+      handleMenuClose();
+    } catch (error) {
+      console.error('Error deleting change:', error);
+      setError('Failed to delete change: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setChanges([...changes, change]);
-    setCreateDialogOpen(false);
-    setNewChange({
-      title: '',
-      changeClass: 'Minor',
-      product: '',
-      stage: 'DESIGN',
-      changeReason: '',
-      changeDocument: '',
-      selectedDocumentInfo: null,
-      selectedProductInfo: null
-    });
-    setExpandedBOMs(new Set());
+  const handleCreateChange = async () => {
+    try {
+      setLoading(true);
+      const currentUser = localStorage.getItem('username') || 'System User';
+      const changeData = {
+        title: newChange.title,
+        changeClass: newChange.changeClass,
+        product: newChange.product,
+        stage: newChange.stage,
+        creator: currentUser,
+        changeReason: newChange.changeReason,
+        changeDocument: newChange.changeDocument,
+        documentIds: newChange.changeDocument ? [newChange.changeDocument] : [],
+        bomIds: newChange.product ? [newChange.product] : []
+      };
+
+      await changeService.createChange(changeData);
+      await loadChanges(); // Reload to show new change
+      setCreateDialogOpen(false);
+      setNewChange({
+        title: '',
+        changeClass: 'Minor',
+        product: '',
+        stage: 'CONCEPTUAL_DESIGN',
+        changeReason: '',
+        changeDocument: '',
+        selectedDocumentInfo: null,
+        selectedProductInfo: null
+      });
+      setExpandedBOMs(new Set());
+    } catch (error) {
+      console.error('Error creating change:', error);
+      setError('Failed to create change: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderChangeCard = (change) => (
@@ -639,15 +750,19 @@ export default function ChangeManager() {
 
       {/* Content Display */}
       {currentTab === 0 ? (
-        <Grid container spacing={3}>
-          {filteredChanges.map((change) => (
-            <Grid item xs={12} md={6} lg={4} key={change.id}>
-              {renderChangeCard(change)}
-            </Grid>
-          ))}
-        </Grid>
+        <Box sx={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', pr: 1 }}>
+          <Grid container spacing={3}>
+            {filteredChanges.map((change) => (
+              <Grid item xs={12} md={6} lg={4} key={change.id}>
+                {renderChangeCard(change)}
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       ) : (
-        renderChangeTable()
+        <Box sx={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+          {renderChangeTable()}
+        </Box>
       )}
 
       {/* Action Menu */}
@@ -744,9 +859,12 @@ export default function ChangeManager() {
                   onChange={(e) => setNewChange({...newChange, stage: e.target.value})}
                   label="Stage"
                 >
-                  <MenuItem value="DESIGN">Design</MenuItem>
-                  <MenuItem value="DEVELOPMENT">Development</MenuItem>
-                  <MenuItem value="PRODUCTION">Production</MenuItem>
+                  <MenuItem value="CONCEPTUAL_DESIGN">Conceptual Design</MenuItem>
+                  <MenuItem value="PRELIMINARY_DESIGN">Preliminary Design</MenuItem>
+                  <MenuItem value="DETAILED_DESIGN">Detailed Design</MenuItem>
+                  <MenuItem value="MANUFACTURING">Manufacturing</MenuItem>
+                  <MenuItem value="IN_SERVICE">In Service</MenuItem>
+                  <MenuItem value="RETIRED">Retired</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -877,7 +995,7 @@ export default function ChangeManager() {
                           Related Product
                         </Typography>
                         <Typography variant="body1">
-                          {selectedChangeForDetails.product}
+                          {selectedChangeForDetails.productName || selectedChangeForDetails.product || 'Not specified'}
                         </Typography>
                       </Box>
                       <Box>
@@ -885,7 +1003,7 @@ export default function ChangeManager() {
                           Change Document
                         </Typography>
                         <Typography variant="body1">
-                          {selectedChangeForDetails.changeDocument || 'Not specified'}
+                          {selectedChangeForDetails.documentName || selectedChangeForDetails.changeDocument || 'Not specified'}
                         </Typography>
                       </Box>
                     </Box>
@@ -997,14 +1115,11 @@ export default function ChangeManager() {
           )}
         </DialogContent>
         <DialogActions>
-          {selectedChangeForDetails?.status === 'DRAFT' && (
+          {(selectedChangeForDetails?.status === 'DRAFT' || selectedChangeForDetails?.status === 'IN_WORK') && (
             <Button
               variant="contained"
               startIcon={<SubmitIcon />}
-              onClick={() => {
-                handleSubmitForReview(selectedChangeForDetails.id);
-                setChangeDetailsOpen(false);
-              }}
+              onClick={() => handleSubmitForReview(selectedChangeForDetails.id)}
               color="primary"
             >
               Submit for Review
@@ -1041,6 +1156,15 @@ export default function ChangeManager() {
             }}
           >
             View History
+          </Button>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            variant="outlined"
+            startIcon={<DeleteIcon />}
+            onClick={() => handleDeleteChange(selectedChangeForDetails?.id)}
+            color="error"
+          >
+            Delete
           </Button>
           <Button onClick={() => setChangeDetailsOpen(false)}>
             Close
@@ -1389,6 +1513,14 @@ export default function ChangeManager() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Reviewer Selection Dialog */}
+      <ReviewerSelectionDialog
+        open={reviewerDialogOpen}
+        onClose={() => setReviewerDialogOpen(false)}
+        onSubmit={handleReviewerSelection}
+        documentId={changeToReview}
+      />
     </Box>
   );
 }

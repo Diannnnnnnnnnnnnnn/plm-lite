@@ -47,9 +47,7 @@ public class BomServiceImpl implements BomService {
         if (request.getStage() == null) {
             throw new ValidationException("Stage is required");
         }
-        if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new ValidationException("At least one BOM item is required");
-        }
+        // Items are optional - can create empty BOM and add items later
     }
     
     @Override
@@ -63,20 +61,23 @@ public class BomServiceImpl implements BomService {
         header.setDescription(request.getDescription());
         header.setCreator(request.getCreator());
         header.setStage(request.getStage());
+        header.setParentId(request.getParentId());
         header.setStatus(Status.IN_WORK);
 
         // Create BOM items
         List<BomItem> items = new ArrayList<>();
-        for (CreateBomRequest.BomItemRequest itemRequest : request.getItems()) {
-            BomItem item = new BomItem();
-            item.setId(UUID.randomUUID().toString());
-            item.setHeader(header);
-            item.setPartNumber(itemRequest.getPartNumber());
-            item.setDescription(itemRequest.getDescription());
-            item.setQuantity(itemRequest.getQuantity());
-            item.setUnit(itemRequest.getUnit());
-            item.setReference(itemRequest.getReference());
-            items.add(item);
+        if (request.getItems() != null) {
+            for (CreateBomRequest.BomItemRequest itemRequest : request.getItems()) {
+                BomItem item = new BomItem();
+                item.setId(UUID.randomUUID().toString());
+                item.setHeader(header);
+                item.setPartNumber(itemRequest.getPartNumber());
+                item.setDescription(itemRequest.getDescription());
+                item.setQuantity(itemRequest.getQuantity());
+                item.setUnit(itemRequest.getUnit());
+                item.setReference(itemRequest.getReference());
+                items.add(item);
+            }
         }
         header.setItems(items);
 
@@ -103,25 +104,25 @@ public class BomServiceImpl implements BomService {
     @Transactional
     public BomHeader update(String id, UpdateBomRequest request) {
         BomHeader header = getById(id);
-        
+
         if (request.getDescription() != null) {
             header.setDescription(request.getDescription());
         }
-        
+
         if (request.getStage() != null) {
             header.setStage(request.getStage());
         }
-        
-        if (request.getItems() != null && !request.getItems().isEmpty()) {
+
+        if (request.getItems() != null) {
             // Create a map of existing items for easy lookup
             Map<String, BomItem> existingItems = header.getItems().stream()
                 .collect(Collectors.toMap(BomItem::getId, item -> item));
-            
+
             List<BomItem> updatedItems = new ArrayList<>();
-            
+
             for (UpdateBomRequest.BomItemRequest itemRequest : request.getItems()) {
                 BomItem item;
-                
+
                 if (itemRequest.getId() != null && existingItems.containsKey(itemRequest.getId())) {
                     // Update existing item
                     item = existingItems.get(itemRequest.getId());
@@ -142,18 +143,19 @@ public class BomServiceImpl implements BomService {
                     item.setUnit(itemRequest.getUnit());
                     item.setReference(itemRequest.getReference());
                 }
-                
+
                 updatedItems.add(item);
             }
-            
-            // Delete items that were not included in the update request
-            for (BomItem removedItem : existingItems.values()) {
-                itemRepository.delete(removedItem);
-            }
-            
-            header.setItems(updatedItems);
+
+            // Remove items that were not included in the update request
+            header.getItems().removeIf(item -> existingItems.containsKey(item.getId()));
+
+            // Add new items to the existing collection
+            header.getItems().addAll(updatedItems.stream()
+                .filter(item -> !header.getItems().contains(item))
+                .collect(Collectors.toList()));
         }
-        
+
         return headerRepository.save(header);
     }
     

@@ -12,9 +12,12 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "bom_headers")
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public class BomHeader {
     @Id
     private String id;
@@ -34,8 +37,13 @@ public class BomHeader {
     
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private com.example.plm.common.model.DocumentStatus status;
-    
+    private com.example.plm.common.model.Status status;
+
+    @Column
+    @JsonProperty("parentId")
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private String parentId;  // ID of parent BOM, null for root BOMs
+
     @OneToMany(mappedBy = "header", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BomItem> items;
     
@@ -103,11 +111,11 @@ public class BomHeader {
         this.stage = stage;
     }
 
-    public com.example.plm.common.model.DocumentStatus getStatus() {
+    public com.example.plm.common.model.Status getStatus() {
         return status;
     }
 
-    public void setStatus(com.example.plm.common.model.DocumentStatus status) {
+    public void setStatus(com.example.plm.common.model.Status status) {
         this.status = status;
     }
 
@@ -149,5 +157,13 @@ public class BomHeader {
 
     public void setDeleteTime(LocalDateTime deleteTime) {
         this.deleteTime = deleteTime;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(String parentId) {
+        this.parentId = parentId;
     }
 }

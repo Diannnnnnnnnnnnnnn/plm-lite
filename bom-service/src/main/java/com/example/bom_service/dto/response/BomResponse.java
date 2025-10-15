@@ -12,6 +12,7 @@ public class BomResponse {
     private String creator;
     private Stage stage;
     private Status status;
+    private String parentId;
     private List<BomItemResponse> items;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
@@ -145,5 +146,13 @@ public class BomResponse {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(String parentId) {
+        this.parentId = parentId;
     }
 }

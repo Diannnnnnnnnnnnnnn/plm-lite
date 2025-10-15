@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8083/api';
+const API_BASE_URL = 'http://localhost:8084/api';
 
 class ChangeService {
   constructor() {
@@ -42,9 +42,9 @@ class ChangeService {
     }
   }
 
-  async submitForReview(changeId) {
+  async submitForReview(changeId, reviewData) {
     try {
-      const response = await this.api.put(`/changes/${changeId}/submit-review`);
+      const response = await this.api.put(`/changes/${changeId}/submit-review`, reviewData);
       return response.data;
     } catch (error) {
       console.error(`Error submitting change ${changeId} for review:`, error);

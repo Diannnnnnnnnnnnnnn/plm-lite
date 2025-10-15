@@ -38,6 +38,7 @@ public class Document {
     private String creator;
     private LocalDateTime createTime = LocalDateTime.now();
     private String fileKey;
+    private String bomId;  // Related BOM ID
 
     public Document() {
         this.id = UUID.randomUUID().toString();
@@ -127,6 +128,14 @@ public class Document {
 
     public void setFileKey(String fileKey) {
         this.fileKey = fileKey;
+    }
+
+    public String getBomId() {
+        return bomId;
+    }
+
+    public void setBomId(String bomId) {
+        this.bomId = bomId;
     }
 
     @Override

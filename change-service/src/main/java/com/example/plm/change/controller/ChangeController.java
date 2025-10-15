@@ -2,6 +2,7 @@ package com.example.plm.change.controller;
 
 import com.example.plm.change.dto.CreateChangeRequest;
 import com.example.plm.change.dto.ChangeResponse;
+import com.example.plm.change.dto.SubmitReviewRequest;
 import com.example.plm.common.model.Status;
 import com.example.plm.change.model.ChangeSearchDocument;
 import com.example.plm.change.service.ChangeService;
@@ -16,7 +17,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/changes")
-@CrossOrigin(origins = "*")
 public class ChangeController {
 
     @Autowired(required = false)
@@ -40,11 +40,13 @@ public class ChangeController {
     }
 
     @PutMapping("/{changeId}/submit-review")
-    public ResponseEntity<ChangeResponse> submitForReview(@PathVariable String changeId) {
+    public ResponseEntity<ChangeResponse> submitForReview(
+            @PathVariable String changeId,
+            @RequestBody SubmitReviewRequest request) {
         try {
             ChangeResponse response = changeServiceDev != null ?
-                changeServiceDev.submitForReview(changeId) :
-                changeService.submitForReview(changeId);
+                changeServiceDev.submitForReview(changeId, request.getReviewerIds()) :
+                changeService.submitForReview(changeId, request.getReviewerIds());
             return ResponseEntity.ok(response);
         } catch (IllegalStateException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);

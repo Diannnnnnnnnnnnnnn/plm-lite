@@ -3,6 +3,8 @@ package com.example.plm.change.dto;
 import com.example.plm.common.model.Stage;
 import com.example.plm.common.model.Status;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.ArrayList;
 
 public class ChangeResponse {
 
@@ -16,6 +18,7 @@ public class ChangeResponse {
     private LocalDateTime createTime;
     private String changeReason;
     private String changeDocument;
+    private List<String> bomIds = new ArrayList<>();
 
     public ChangeResponse() {}
 
@@ -63,4 +66,7 @@ public class ChangeResponse {
 
     public String getChangeDocument() { return changeDocument; }
     public void setChangeDocument(String changeDocument) { this.changeDocument = changeDocument; }
+
+    public List<String> getBomIds() { return bomIds; }
+    public void setBomIds(List<String> bomIds) { this.bomIds = bomIds; }
 }

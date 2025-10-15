@@ -13,13 +13,15 @@ function TaskList() {
   return (
     <div>
       <h2>Tasks</h2>
-      <ul>
-        {tasks.map(task => (
-          <li key={task.id}>
-            {task.name} - {task.description}
-          </li>
-        ))}
-      </ul>
+      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+        <ul>
+          {tasks.map(task => (
+            <li key={task.id}>
+              {task.name} - {task.description}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

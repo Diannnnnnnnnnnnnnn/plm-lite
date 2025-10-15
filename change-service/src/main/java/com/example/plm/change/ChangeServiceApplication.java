@@ -18,7 +18,12 @@ import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
         Neo4jDataAutoConfiguration.class,
         Neo4jRepositoriesAutoConfiguration.class,
         ElasticsearchRestClientAutoConfiguration.class,
-        EurekaClientAutoConfiguration.class
+        EurekaClientAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.data.elasticsearch.ReactiveElasticsearchRepositoriesAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.data.neo4j.Neo4jReactiveDataAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.data.neo4j.Neo4jReactiveRepositoriesAutoConfiguration.class
     }
 )
 @EnableFeignClients

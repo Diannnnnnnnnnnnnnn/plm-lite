@@ -3,6 +3,8 @@ package com.example.plm.change.dto;
 import com.example.plm.common.model.Stage;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.ArrayList;
 
 public class CreateChangeRequest {
 
@@ -26,6 +28,8 @@ public class CreateChangeRequest {
 
     @NotBlank(message = "Change document is required")
     private String changeDocument;
+
+    private List<String> bomIds = new ArrayList<>();
 
     public CreateChangeRequest() {}
 
@@ -60,4 +64,7 @@ public class CreateChangeRequest {
 
     public String getChangeDocument() { return changeDocument; }
     public void setChangeDocument(String changeDocument) { this.changeDocument = changeDocument; }
+
+    public List<String> getBomIds() { return bomIds; }
+    public void setBomIds(List<String> bomIds) { this.bomIds = bomIds; }
 }

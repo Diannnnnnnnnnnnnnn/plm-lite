@@ -55,7 +55,19 @@
       "Bash(export HTTP_PROXY=\"\")",
       "Bash(export HTTPS_PROXY=\"\")",
       "Bash(export NO_PROXY=\"localhost,127.0.0.1,::1\")",
-      "Bash(export:*)"
+      "Bash(export:*)",
+      "Bash(Stop-Process -Id 8456,17420,18952,19040 -Force)",
+      "Bash(python:*)",
+      "Bash(Stop-Process -Id 3912 -Force)",
+      "Bash(Stop-Process -Name node -Force -ErrorAction SilentlyContinue)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(git checkout:*)",
+      "Bash(Stop-Process -Id 8460 -Force)",
+      "Bash(Stop-Process -Id 16888 -Force)",
+      "Bash(Stop-Process -Id 19220 -Force)",
+      "Bash(Stop-Process -Id 17012 -Force)",
+      "Bash(Stop-Process -Id 13280 -Force)"
     ],
     "deny": [],
     "ask": []

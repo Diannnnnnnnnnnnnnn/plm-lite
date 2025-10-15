@@ -6,6 +6,8 @@ import com.example.plm.change.model.*;
 import com.example.plm.change.repository.mysql.ChangeRepository;
 import com.example.plm.change.repository.mysql.ChangeDocumentRepository;
 import com.example.plm.change.repository.mysql.ChangePartRepository;
+import com.example.plm.change.repository.mysql.ChangeBomRepository;
+import com.example.plm.change.client.TaskServiceClient;
 import com.example.plm.common.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -31,6 +33,12 @@ public class ChangeServiceDev {
     @Autowired
     private ChangePartRepository changePartRepository;
 
+    @Autowired
+    private ChangeBomRepository changeBomRepository;
+
+    @Autowired(required = false)
+    private TaskServiceClient taskServiceClient;
+
     @Transactional
     public ChangeResponse createChange(CreateChangeRequest request) {
         // In dev mode, skip document validation
@@ -50,11 +58,20 @@ public class ChangeServiceDev {
         );
 
         change = changeRepository.save(change);
+
+        // Create BOM relationships if provided
+        if (request.getBomIds() != null && !request.getBomIds().isEmpty()) {
+            for (String bomId : request.getBomIds()) {
+                ChangeBom changeBom = new ChangeBom(change, bomId);
+                changeBomRepository.save(changeBom);
+            }
+        }
+
         return mapToResponse(change);
     }
 
     @Transactional
-    public ChangeResponse submitForReview(String changeId) {
+    public ChangeResponse submitForReview(String changeId, List<String> reviewerIds) {
         Change change = changeRepository.findById(changeId)
             .orElseThrow(() -> new RuntimeException("Change not found"));
 
@@ -64,6 +81,24 @@ public class ChangeServiceDev {
 
         change.setStatus(Status.IN_REVIEW);
         change = changeRepository.save(change);
+
+        // Create review tasks for each reviewer
+        if (taskServiceClient != null && reviewerIds != null && !reviewerIds.isEmpty()) {
+            for (String reviewerId : reviewerIds) {
+                try {
+                    TaskServiceClient.TaskDTO task = new TaskServiceClient.TaskDTO(
+                        "Review Change: " + change.getTitle(),
+                        "Please review change " + changeId + " - " + change.getChangeReason(),
+                        Long.parseLong(reviewerId)
+                    );
+                    taskServiceClient.createTask(task);
+                } catch (Exception e) {
+                    // Log error but don't fail the whole operation
+                    System.err.println("Failed to create task for reviewer " + reviewerId + ": " + e.getMessage());
+                }
+            }
+        }
+
         return mapToResponse(change);
     }
 
@@ -115,7 +150,7 @@ public class ChangeServiceDev {
     }
 
     private ChangeResponse mapToResponse(Change change) {
-        return new ChangeResponse(
+        ChangeResponse response = new ChangeResponse(
             change.getId(),
             change.getTitle(),
             change.getStage(),
@@ -127,5 +162,14 @@ public class ChangeServiceDev {
             change.getChangeReason(),
             change.getChangeDocument()
         );
+
+        // Load BOM IDs
+        List<String> bomIds = changeBomRepository.findByChangeId(change.getId())
+            .stream()
+            .map(ChangeBom::getBomId)
+            .collect(Collectors.toList());
+        response.setBomIds(bomIds);
+
+        return response;
     }
 }

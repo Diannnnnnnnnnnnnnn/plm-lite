@@ -50,8 +50,13 @@ import {
   Close as CloseIcon,
   ViewModule as GridViewIcon,
   ViewKanban as KanbanViewIcon,
-  Assignment as TaskIcon
+  Assignment as TaskIcon,
+  Check as ApproveIcon,
+  Close as DeclineIcon
 } from '@mui/icons-material';
+import taskService from '../../services/taskService';
+import documentService from '../../services/documentService';
+import changeService from '../../services/changeService';
 
 const mockTasks = [
   {
@@ -127,7 +132,7 @@ const priorityLabels = {
   3: 'High'
 };
 
-const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick }) => {
+const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick, onDragStart, draggable = false }) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenuClick = (event) => {
@@ -144,23 +149,28 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick }) => {
 
   return (
     <Card
+      draggable={draggable}
+      onDragStart={(e) => onDragStart && onDragStart(e, task)}
       sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        cursor: 'pointer',
+        cursor: draggable ? 'grab' : 'pointer',
         '&:hover': {
           boxShadow: 4,
           transform: 'translateY(-2px)',
           transition: 'all 0.2s ease-in-out'
-        }
+        },
+        '&:active': draggable ? {
+          cursor: 'grabbing'
+        } : {}
       }}
       onClick={() => onClick && onClick(task)}
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
           <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-            {task.taskName}
+            {task.name}
           </Typography>
           <IconButton
             size="small"
@@ -174,56 +184,16 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick }) => {
         </Box>
 
         <Typography variant="body2" color="textSecondary" paragraph>
-          {task.taskDescription}
+          {task.description}
         </Typography>
-
-        <Box display="flex" gap={1} mb={2}>
-          <Chip
-            label={task.taskStatus.replace('_', ' ')}
-            color={statusColors[task.taskStatus]}
-            size="small"
-          />
-          <Chip
-            label={priorityLabels[task.priority]}
-            color={priorityColors[task.priority]}
-            size="small"
-            icon={<PriorityIcon />}
-          />
-        </Box>
-
-        <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
-          <Chip label={task.taskType} variant="outlined" size="small" />
-          {task.contextType && (
-            <Chip label={task.contextType} variant="outlined" size="small" />
-          )}
-        </Box>
 
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Box display="flex" alignItems="center" gap={1}>
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-              {getInitials(task.assignedTo)}
+              U
             </Avatar>
-            <Typography variant="body2">{task.assignedTo}</Typography>
+            <Typography variant="body2">User ID: {task.userId}</Typography>
           </Box>
-
-          <Typography variant="body2" color="textSecondary">
-            By: {task.assignedBy}
-          </Typography>
-        </Box>
-
-        <Box mb={2}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography variant="body2" color="textSecondary">Status Progress</Typography>
-            <Typography variant="body2" color="textSecondary">
-              {task.taskStatus === 'COMPLETED' ? '100%' :
-               task.taskStatus === 'IN_PROGRESS' ? '50%' : '0%'}
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={task.taskStatus === 'COMPLETED' ? 100 :
-                   task.taskStatus === 'IN_PROGRESS' ? 50 : 0}
-          />
         </Box>
 
         <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -264,8 +234,8 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick }) => {
 };
 
 export default function TaskManager() {
-  const [tasks, setTasks] = useState(mockTasks);
-  const [filteredTasks, setFilteredTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [currentTab, setCurrentTab] = useState(0);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -277,6 +247,28 @@ export default function TaskManager() {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [kanbanGroupBy, setKanbanGroupBy] = useState('status'); // 'status' or 'type'
+
+  // Fetch tasks from API on component mount
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        const response = await taskService.getAllTasks();
+        console.log('Loaded tasks from API:', response);
+        setTasks(response);
+      } catch (error) {
+        console.error('Failed to load tasks:', error);
+        // Fallback to empty array on error
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   // Search highlighting function
   const highlightSearchTerm = (text, term) => {
@@ -380,58 +372,390 @@ export default function TaskManager() {
     setTasks(tasks.filter(task => task.id !== taskId));
   };
 
-  const handleStatusChange = (task) => {
-    // Implementation for status change dialog
-    console.log('Change status for task:', task.id);
+  const handleStatusChange = async (task, newStatus) => {
+    try {
+      await taskService.updateTaskStatus(task.id, newStatus);
+      // Refresh tasks
+      const response = await taskService.getAllTasks();
+      setTasks(response);
+    } catch (error) {
+      console.error('Error changing task status:', error);
+      alert('Failed to update task status: ' + error.message);
+    }
+  };
+
+  const handleDragStart = (e, task) => {
+    e.dataTransfer.setData('taskId', task.id.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e, newStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('taskId');
+    const task = tasks.find(t => t.id.toString() === taskId);
+
+    if (task && task.taskStatus !== newStatus) {
+      await handleStatusChange(task, newStatus);
+    }
+  };
+
+  const extractDocumentIdFromTask = (task) => {
+    // Try to extract document ID from task name which has format: "Review Document: masterId version [documentId]"
+    let match = task.name.match(/\[([^\]]+)\]/);
+    if (match) {
+      return match[1];
+    }
+
+    // Fallback: try to extract from description which has format: "... Document ID: xxx"
+    if (task.description) {
+      match = task.description.match(/Document ID:\s*([a-f0-9-]+)/i);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    return null;
+  };
+
+  const extractChangeIdFromTask = (task) => {
+    // Try to extract change ID from description which has format: "Please review change {changeId} - ..."
+    if (task.description) {
+      const match = task.description.match(/review change\s+([a-f0-9-]+)/i);
+      if (match) {
+        return match[1];
+      }
+    }
+    return null;
+  };
+
+  const isChangeReviewTask = (task) => {
+    return task.name && task.name.startsWith('Review Change:');
+  };
+
+  const handleApproveReview = async () => {
+    try {
+      // Check if this is a change review task or document review task
+      if (isChangeReviewTask(selectedTaskForDetails)) {
+        // Handle change approval
+        const changeId = extractChangeIdFromTask(selectedTaskForDetails);
+        if (!changeId) {
+          alert('Cannot find change ID in task');
+          return;
+        }
+
+        await changeService.approveChange(changeId);
+
+        // Mark task as completed
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+
+        alert('Change approved successfully!');
+        setTaskDetailsOpen(false);
+
+        // Refresh tasks
+        const response = await taskService.getAllTasks();
+        setTasks(response);
+      } else {
+        // Handle document approval
+        const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
+        if (!documentId) {
+          alert('Cannot find document ID in task');
+          return;
+        }
+
+        await documentService.completeReview(documentId, true, 'Current User', 'Approved');
+
+        // Mark task as completed
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+
+        alert('Document approved successfully! Status changed to RELEASED.');
+        setTaskDetailsOpen(false);
+
+        // Refresh tasks
+        const response = await taskService.getAllTasks();
+        setTasks(response);
+      }
+    } catch (error) {
+      console.error('Error approving review:', error);
+      alert('Failed to approve: ' + error.message);
+    }
+  };
+
+  const handleDeclineReview = async () => {
+    try {
+      // Check if this is a change review task or document review task
+      if (isChangeReviewTask(selectedTaskForDetails)) {
+        // For changes, we don't have a reject API yet, so just mark task as completed
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+        alert('Change review task marked as completed (rejection not yet implemented)');
+        setTaskDetailsOpen(false);
+
+        // Refresh tasks
+        const response = await taskService.getAllTasks();
+        setTasks(response);
+        return;
+      }
+
+      const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
+      if (!documentId) {
+        alert('Cannot find document ID in task');
+        return;
+      }
+
+      await documentService.completeReview(documentId, false, 'Current User', 'Declined');
+
+      // Mark task as completed even when declined
+      await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+
+      alert('Document declined. Status remains IN_WORK.');
+      setTaskDetailsOpen(false);
+
+      // Refresh tasks
+      const response = await taskService.getAllTasks();
+      setTasks(response);
+    } catch (error) {
+      console.error('Error declining document:', error);
+      alert('Failed to decline document: ' + error.message);
+    }
   };
 
   const getTasksByStatus = (status) => {
     return filteredTasks.filter(task => task.taskStatus === status);
   };
 
+  const getTasksByType = (type) => {
+    return filteredTasks.filter(task => {
+      // Extract task type from task name if taskType field doesn't exist
+      if (task.taskType) {
+        return task.taskType === type;
+      }
+      // Fallback: check task name for keywords
+      const taskName = task.name || task.taskName || '';
+      return taskName.toLowerCase().includes(type.toLowerCase());
+    });
+  };
+
+  const getUniqueTaskTypes = () => {
+    const types = new Set();
+    filteredTasks.forEach(task => {
+      if (task.taskType) {
+        types.add(task.taskType);
+      } else {
+        // Extract type from task name
+        const taskName = task.name || task.taskName || '';
+        if (taskName.toLowerCase().includes('review')) {
+          types.add('REVIEW');
+        } else if (taskName.toLowerCase().includes('validation')) {
+          types.add('VALIDATION');
+        } else if (taskName.toLowerCase().includes('approval')) {
+          types.add('APPROVAL');
+        } else {
+          types.add('GENERAL');
+        }
+      }
+    });
+    return Array.from(types);
+  };
+
   const renderTaskGrid = (taskList) => (
-    <Grid container spacing={3}>
-      {taskList.map((task) => (
-        <Grid item xs={12} md={6} lg={4} key={task.id}>
-          <TaskCard
-            task={task}
-            onEdit={handleEditTask}
-            onDelete={handleDeleteTask}
-            onStatusChange={handleStatusChange}
-            onClick={handleTaskClick}
-          />
-        </Grid>
-      ))}
-    </Grid>
+    <Box sx={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
+      <Grid container spacing={3}>
+        {taskList.map((task) => (
+          <Grid item xs={12} md={6} lg={4} key={task.id}>
+            <TaskCard
+              task={task}
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+              onStatusChange={handleStatusChange}
+              onClick={handleTaskClick}
+            />
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
   );
 
   const renderKanbanBoard = () => {
+    if (kanbanGroupBy === 'type') {
+      // Group by task type
+      const taskTypes = getUniqueTaskTypes();
+      const typeLabels = {
+        'REVIEW': 'Review Tasks',
+        'VALIDATION': 'Validation Tasks',
+        'APPROVAL': 'Approval Tasks',
+        'DOCUMENTATION': 'Documentation',
+        'GENERAL': 'General Tasks'
+      };
+      const typeColors = {
+        'REVIEW': 'primary.light',
+        'VALIDATION': 'secondary.light',
+        'APPROVAL': 'success.light',
+        'DOCUMENTATION': 'info.light',
+        'GENERAL': 'grey.400'
+      };
+
+      return (
+        <Grid container spacing={2}>
+          {taskTypes.map((type) => (
+            <Grid item xs={12} md={taskTypes.length > 2 ? 4 : 6} key={type}>
+              <Paper
+                sx={{
+                  p: 2,
+                  height: 'calc(100vh - 300px)',
+                  bgcolor: 'grey.50',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  border: 2,
+                  borderColor: typeColors[type] || 'grey.400'
+                }}
+              >
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  p: 1,
+                  bgcolor: typeColors[type] || 'grey.400',
+                  borderRadius: 1
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {typeLabels[type] || type}
+                  </Typography>
+                  <Chip
+                    label={getTasksByType(type).length}
+                    size="small"
+                    sx={{ bgcolor: 'white', fontWeight: 'bold' }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, pr: 1 }}>
+                  {getTasksByType(type).length === 0 ? (
+                    <Box sx={{
+                      textAlign: 'center',
+                      py: 4,
+                      color: 'text.secondary',
+                      border: '2px dashed',
+                      borderColor: 'grey.300',
+                      borderRadius: 1
+                    }}>
+                      <TaskIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                      <Typography variant="body2">
+                        No {(typeLabels[type] || type).toLowerCase()}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    getTasksByType(type).map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onEdit={handleEditTask}
+                        onDelete={handleDeleteTask}
+                        onStatusChange={handleStatusChange}
+                        onClick={handleTaskClick}
+                      />
+                    ))
+                  )}
+                </Box>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      );
+    }
+
+    // Group by status (default)
     const statuses = ['TODO', 'IN_PROGRESS', 'COMPLETED'];
     const statusLabels = {
       'TODO': 'To Do',
       'IN_PROGRESS': 'In Progress',
       'COMPLETED': 'Completed'
     };
+    const statusColors = {
+      'TODO': 'info.light',
+      'IN_PROGRESS': 'warning.light',
+      'COMPLETED': 'success.light'
+    };
 
     return (
-      <Grid container spacing={2}>
+      <Grid container spacing={2} sx={{ height: 'calc(100vh - 200px)' }}>
         {statuses.map((status) => (
-          <Grid item xs={12} md={4} key={status}>
-            <Paper sx={{ p: 2, minHeight: '600px', bgcolor: 'grey.50' }}>
-              <Typography variant="h6" gutterBottom>
-                {statusLabels[status]} ({getTasksByStatus(status).length})
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={2}>
-                {getTasksByStatus(status).map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onEdit={handleEditTask}
-                    onDelete={handleDeleteTask}
-                    onStatusChange={handleStatusChange}
-                    onClick={handleTaskClick}
-                  />
-                ))}
+          <Grid item xs={12} md={4} key={status} sx={{ height: '100%', display: 'flex' }}>
+            <Paper
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, status)}
+              sx={{
+                p: 2,
+                height: '100%',
+                width: '100%',
+                bgcolor: 'grey.50',
+                display: 'flex',
+                flexDirection: 'column',
+                border: 2,
+                borderColor: statusColors[status]
+              }}
+            >
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 2,
+                p: 1,
+                bgcolor: statusColors[status],
+                borderRadius: 1
+              }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {statusLabels[status]}
+                </Typography>
+                <Chip
+                  label={getTasksByStatus(status).length}
+                  size="small"
+                  sx={{ bgcolor: 'white', fontWeight: 'bold' }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  overflowY: 'auto',
+                  flex: 1,
+                  pr: 1,
+                  minHeight: 0
+                }}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, status)}
+              >
+                {getTasksByStatus(status).length === 0 ? (
+                  <Box sx={{
+                    textAlign: 'center',
+                    py: 4,
+                    color: 'text.secondary',
+                    border: '2px dashed',
+                    borderColor: 'grey.300',
+                    borderRadius: 1
+                  }}>
+                    <TaskIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                    <Typography variant="body2">
+                      No {statusLabels[status].toLowerCase()} tasks
+                    </Typography>
+                  </Box>
+                ) : (
+                  getTasksByStatus(status).map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onEdit={handleEditTask}
+                      onDelete={handleDeleteTask}
+                      onStatusChange={handleStatusChange}
+                      onClick={handleTaskClick}
+                      draggable={true}
+                      onDragStart={handleDragStart}
+                    />
+                  ))
+                )}
               </Box>
             </Paper>
           </Grid>
@@ -690,32 +1014,18 @@ export default function TaskManager() {
               {/* Task Header */}
               <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                 <Typography variant="h6" component="div" sx={{ mb: 1, fontWeight: 'bold' }}>
-                  {selectedTaskForDetails.taskName}
+                  {selectedTaskForDetails.name}
                 </Typography>
                 <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                   Task ID: {selectedTaskForDetails.id}
                 </Typography>
-                <Box display="flex" gap={1} flexWrap="wrap">
-                  <Chip
-                    label={selectedTaskForDetails.taskStatus}
-                    color={selectedTaskForDetails.taskStatus === 'COMPLETED' ? 'success' :
-                           selectedTaskForDetails.taskStatus === 'IN_PROGRESS' ? 'warning' : 'default'}
-                    size="small"
-                  />
-                  <Chip
-                    label={`Priority: ${priorityLabels[selectedTaskForDetails.priority]}`}
-                    color={selectedTaskForDetails.priority === 3 ? 'error' :
-                           selectedTaskForDetails.priority === 2 ? 'warning' : 'default'}
-                    size="small"
-                  />
-                </Box>
               </Box>
 
-              {/* Task Information Grid */}
+              {/* Task Information */}
               <Grid container spacing={3}>
                 {/* Basic Information */}
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2, height: '100%' }}>
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom color="primary">
                       Basic Information
                     </Typography>
@@ -733,57 +1043,28 @@ export default function TaskManager() {
                           Task Name
                         </Typography>
                         <Typography variant="body1">
-                          {selectedTaskForDetails.taskName}
+                          {selectedTaskForDetails.name}
                         </Typography>
                       </Box>
                       <Box>
                         <Typography variant="subtitle2" color="textSecondary">
-                          Assigned To
-                        </Typography>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
-                            {selectedTaskForDetails.assignedTo.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </Avatar>
-                          <Typography variant="body1">
-                            {selectedTaskForDetails.assignedTo}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </Grid>
-
-                {/* Timeline & Priority */}
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Timeline & Priority
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                      <Box>
-                        <Typography variant="subtitle2" color="textSecondary">
-                          Created Date
+                          Assigned To User ID
                         </Typography>
                         <Typography variant="body1">
-                          {new Date(selectedTaskForDetails.createdAt).toLocaleString()}
+                          {selectedTaskForDetails.userId}
                         </Typography>
                       </Box>
                       <Box>
                         <Typography variant="subtitle2" color="textSecondary">
-                          Due Date
-                        </Typography>
-                        <Typography variant="body1">
-                          {new Date(selectedTaskForDetails.dueDate).toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="textSecondary">
-                          Priority Level
+                          Task Status
                         </Typography>
                         <Chip
-                          label={priorityLabels[selectedTaskForDetails.priority]}
-                          color={selectedTaskForDetails.priority === 3 ? 'error' :
-                                 selectedTaskForDetails.priority === 2 ? 'warning' : 'default'}
+                          label={selectedTaskForDetails.taskStatus || 'TODO'}
+                          color={
+                            selectedTaskForDetails.taskStatus === 'COMPLETED' ? 'success' :
+                            selectedTaskForDetails.taskStatus === 'IN_PROGRESS' ? 'warning' :
+                            'default'
+                          }
                           size="small"
                         />
                       </Box>
@@ -798,42 +1079,8 @@ export default function TaskManager() {
                       Task Description
                     </Typography>
                     <Typography variant="body1" sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      {selectedTaskForDetails.taskDescription}
+                      {selectedTaskForDetails.description}
                     </Typography>
-                  </Paper>
-                </Grid>
-
-                {/* Progress & Status */}
-                <Grid item xs={12}>
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Progress & Status
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1">Current Status</Typography>
-                        <Chip
-                          label={selectedTaskForDetails.taskStatus}
-                          color={selectedTaskForDetails.taskStatus === 'COMPLETED' ? 'success' :
-                                 selectedTaskForDetails.taskStatus === 'IN_PROGRESS' ? 'warning' : 'default'}
-                        />
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                          Progress
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={selectedTaskForDetails.taskStatus === 'COMPLETED' ? 100 :
-                                 selectedTaskForDetails.taskStatus === 'IN_PROGRESS' ? 50 : 0}
-                          sx={{ height: 8, borderRadius: 1 }}
-                        />
-                        <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                          {selectedTaskForDetails.taskStatus === 'COMPLETED' ? '100% Complete' :
-                           selectedTaskForDetails.taskStatus === 'IN_PROGRESS' ? '50% In Progress' : '0% Not Started'}
-                        </Typography>
-                      </Box>
-                    </Box>
                   </Paper>
                 </Grid>
               </Grid>
@@ -841,16 +1088,26 @@ export default function TaskManager() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={() => {
-              handleEditTask(selectedTaskForDetails);
-              setTaskDetailsOpen(false);
-            }}
-          >
-            Edit Task
-          </Button>
+          {selectedTaskForDetails && selectedTaskForDetails.taskStatus !== 'COMPLETED' && (
+            <>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<ApproveIcon />}
+                onClick={handleApproveReview}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeclineIcon />}
+                onClick={handleDeclineReview}
+              >
+                Decline
+              </Button>
+            </>
+          )}
           <Button onClick={() => setTaskDetailsOpen(false)}>
             Close
           </Button>

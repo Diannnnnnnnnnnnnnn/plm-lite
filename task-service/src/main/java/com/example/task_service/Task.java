@@ -27,19 +27,26 @@ public class Task implements Serializable { // Implement Serializable interface
     private String name;
     private String description;
     private Long userId; // Field to associate the task with a user
-    
+    private String taskStatus; // Task status: TODO, IN_PROGRESS, COMPLETED
+    private java.time.LocalDateTime createdAt; // Task creation timestamp
+    private java.time.LocalDateTime dueDate; // Task due date
+
     //code for the relation of task and file
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
     private List<FileMetadata> files = new ArrayList<>();
 
     // Constructors
     public Task() {
+        this.taskStatus = "TODO"; // Default status
+        this.createdAt = java.time.LocalDateTime.now();
     }
 
     public Task(String name, String description, Long userId) {
         this.name = name;
         this.description = description;
         this.userId = userId;
+        this.taskStatus = "TODO"; // Default status
+        this.createdAt = java.time.LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -73,5 +80,37 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getTaskStatus() {
+        return taskStatus;
+    }
+
+    public void setTaskStatus(String taskStatus) {
+        this.taskStatus = taskStatus;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public java.time.LocalDateTime getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(java.time.LocalDateTime dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public List<FileMetadata> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<FileMetadata> files) {
+        this.files = files;
     }
 }

@@ -88,6 +88,7 @@ public class BomController {
         response.setCreator(header.getCreator());
         response.setStage(header.getStage());
         response.setStatus(header.getStatus());
+        response.setParentId(header.getParentId());
         response.setCreateTime(header.getCreateTime());
         response.setUpdateTime(header.getUpdateTime());
 

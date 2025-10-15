@@ -60,6 +60,9 @@ public class Change {
     @OneToMany(mappedBy = "change", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ChangePart> changeParts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "change", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ChangeBom> changeBoms = new ArrayList<>();
+
     public Change() {}
 
     public Change(String id, String title, Stage stage, String changeClass, String product,
@@ -112,4 +115,7 @@ public class Change {
 
     public List<ChangePart> getChangeParts() { return changeParts; }
     public void setChangeParts(List<ChangePart> changeParts) { this.changeParts = changeParts; }
+
+    public List<ChangeBom> getChangeBoms() { return changeBoms; }
+    public void setChangeBoms(List<ChangeBom> changeBoms) { this.changeBoms = changeBoms; }
 }

@@ -63,6 +63,10 @@ public class UserService {
     public User updateUser(Long id, User user) {
         if (userRepository.existsById(id)) {
             user.setId(id);
+            // Encrypt password if it's being updated
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+            }
             return userRepository.save(user);
         } else {
             return null; // Handle non-existent ID

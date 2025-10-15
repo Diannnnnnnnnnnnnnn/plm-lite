@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import documentService from '../../services/documentService';
+import ReviewerSelectionDialog from './ReviewerSelectionDialog';
 import {
   Box,
   Typography,
@@ -163,6 +164,8 @@ export default function DocumentManager() {
     status: '',
     description: ''
   });
+  const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
+  const [documentToReview, setDocumentToReview] = useState(null);
 
   // Load documents from API
   const loadDocuments = async () => {
@@ -260,6 +263,44 @@ export default function DocumentManager() {
     setSelectedDocument(null);
   };
 
+  const handleDeleteDocument = async () => {
+    if (!selectedDocument) return;
+
+    if (window.confirm(`Are you sure you want to delete "${selectedDocument.title}"?`)) {
+      try {
+        await documentService.deleteDocument(selectedDocument.id);
+        // Refresh the document list
+        const updatedDocuments = await documentService.getAllDocuments();
+        setDocuments(updatedDocuments);
+        setAnchorEl(null);
+        setSelectedDocument(null);
+        console.log('Document deleted successfully');
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        alert('Failed to delete document: ' + error.message);
+      }
+    }
+  };
+
+  const handleDeleteDocumentFromDetails = async () => {
+    if (!selectedDocumentForDetails) return;
+
+    if (window.confirm(`Are you sure you want to delete "${selectedDocumentForDetails.title}"?`)) {
+      try {
+        await documentService.deleteDocument(selectedDocumentForDetails.id);
+        // Refresh the document list
+        const updatedDocuments = await documentService.getAllDocuments();
+        setDocuments(updatedDocuments);
+        setDocumentDetailsOpen(false);
+        setSelectedDocumentForDetails(null);
+        console.log('Document deleted successfully');
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        alert('Failed to delete document: ' + error.message);
+      }
+    }
+  };
+
   const handleUploadDialog = () => {
     setUploadDialogOpen(true);
   };
@@ -335,7 +376,8 @@ export default function DocumentManager() {
         id: bom.id,
         description: bom.description,
         stage: bom.stage,
-        type: 'BOM'
+        type: 'BOM',
+        bomId: bom.id  // Store BOM ID
       }
     });
     setBomSelectionOpen(false);
@@ -350,7 +392,8 @@ export default function DocumentManager() {
         id: `${bomId}-${item.id}`,
         description: `${item.description} (from ${bomDescription})`,
         partNumber: item.partNumber,
-        type: 'Part'
+        type: 'Part',
+        bomId: bomId  // Store the actual BOM ID separately
       }
     });
     setBomSelectionOpen(false);
@@ -410,7 +453,7 @@ export default function DocumentManager() {
         description: newDocument.description,
         stage: newDocument.stage,
         documentNumber: newDocument.documentNumber || undefined,
-        relatedProduct: newDocument.selectedProductInfo?.id || undefined
+        relatedProduct: newDocument.selectedProductInfo?.bomId || undefined  // Use bomId instead of id
       };
 
       console.log('Creating document with data:', {
@@ -465,14 +508,19 @@ export default function DocumentManager() {
   };
 
   const handleSubmitForReview = async (documentId) => {
+    setDocumentToReview(documentId);
+    setReviewerDialogOpen(true);
+  };
+
+  const handleReviewerSelection = async (reviewerIds) => {
     try {
       const reviewData = {
         user: 'current-user',
-        reviewerIds: ['reviewer1', 'reviewer2']
+        reviewerIds: reviewerIds
       };
 
-      console.log('Submitting document for review:', documentId);
-      await documentService.submitForReview(documentId, reviewData);
+      console.log('Submitting document for review:', documentToReview, 'with reviewers:', reviewerIds);
+      await documentService.submitForReview(documentToReview, reviewData);
 
       await loadDocuments();
       setDocumentDetailsOpen(false);
@@ -674,137 +722,157 @@ export default function DocumentManager() {
         </Box>
       ) : (
         <>
-          {/* Document Display */}
-          {currentTab === 1 ? (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Document</TableCell>
-                    <TableCell>Document Number</TableCell>
-                    <TableCell>Stage</TableCell>
-                    <TableCell>Creator</TableCell>
-                    <TableCell>Version</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredDocuments.map((document) => (
-                    <TableRow
-                      key={document.id}
-                      hover
+          {/* Document Display - Scrollable Container */}
+          <Box sx={{
+            maxHeight: 'calc(100vh - 250px)',
+            overflowY: 'auto',
+            pr: 1,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: '#f1f1f1',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#888',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: '#555',
+              },
+            },
+          }}>
+            {currentTab === 1 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Document</TableCell>
+                      <TableCell>Document Number</TableCell>
+                      <TableCell>Stage</TableCell>
+                      <TableCell>Creator</TableCell>
+                      <TableCell>Version</TableCell>
+                      <TableCell>Created</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredDocuments.map((document) => (
+                      <TableRow
+                        key={document.id}
+                        hover
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: 'action.hover'
+                          }
+                        }}
+                        onClick={() => handleDocumentClick(document)}
+                      >
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            {getFileIcon(document.fileKey?.split('.').pop() || 'document')}
+                            <Typography variant="body2">{document.title}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{document.master?.documentNumber || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={document.stage}
+                            color={getStageColor(document.stage)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{document.creator}</TableCell>
+                        <TableCell>v{document.revision}.{document.version}</TableCell>
+                        <TableCell>{new Date(document.createTime).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={document.status}
+                            color={getStatusColor(document.status)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMenuClick(e, document);
+                            }}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Grid container spacing={3}>
+                {filteredDocuments.map((document) => (
+                  <Grid item xs={12} md={6} lg={4} key={document.id}>
+                    <Card
                       sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
                         cursor: 'pointer',
                         '&:hover': {
-                          backgroundColor: 'action.hover'
+                          boxShadow: 4,
+                          transform: 'translateY(-2px)',
+                          transition: 'all 0.2s ease-in-out'
                         }
                       }}
                       onClick={() => handleDocumentClick(document)}
                     >
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          {getFileIcon(document.fileKey?.split('.').pop() || 'document')}
-                          <Typography variant="body2">{document.title}</Typography>
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                          <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+                            {document.title}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMenuClick(e, document)}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
                         </Box>
-                      </TableCell>
-                      <TableCell>{document.master?.documentNumber || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={document.stage}
-                          color={getStageColor(document.stage)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{document.creator}</TableCell>
-                      <TableCell>v{document.revision}.{document.version}</TableCell>
-                      <TableCell>{new Date(document.createTime).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={document.status}
-                          color={getStatusColor(document.status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMenuClick(e, document);
-                          }}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Grid container spacing={3}>
-              {filteredDocuments.map((document) => (
-                <Grid item xs={12} md={6} lg={4} key={document.id}>
-                  <Card
-                    sx={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        boxShadow: 4,
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.2s ease-in-out'
-                      }
-                    }}
-                    onClick={() => handleDocumentClick(document)}
-                  >
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
-                          {document.title}
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          {document.master?.documentNumber || 'No document number'}
                         </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMenuClick(e, document)}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </Box>
-                      <Typography variant="body2" color="textSecondary" gutterBottom>
-                        {document.master?.documentNumber || 'No document number'}
-                      </Typography>
-                      <Box display="flex" gap={1} mb={2} flexWrap="wrap">
-                        <Chip
-                          label={document.status}
-                          color={getStatusColor(document.status)}
-                          size="small"
-                        />
-                        <Chip
-                          label={document.stage}
-                          color={getStageColor(document.stage)}
-                          size="small"
-                        />
-                      </Box>
-                      <Typography variant="body2" color="textSecondary" paragraph>
-                        Version: v{document.revision}.{document.version}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="body2" color="textSecondary">
-                          Created by: {document.creator}
+                        <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+                          <Chip
+                            label={document.status}
+                            color={getStatusColor(document.status)}
+                            size="small"
+                          />
+                          <Chip
+                            label={document.stage}
+                            color={getStageColor(document.stage)}
+                            size="small"
+                          />
+                        </Box>
+                        <Typography variant="body2" color="textSecondary" paragraph>
+                          Version: v{document.revision}.{document.version}
                         </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {new Date(document.createTime).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" color="textSecondary">
+                            Created by: {document.creator}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            {new Date(document.createTime).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
         </>
       )}
 
@@ -826,7 +894,7 @@ export default function DocumentManager() {
           <EditIcon sx={{ mr: 1 }} fontSize="small" />
           Edit
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleDeleteDocument}>
           <DeleteIcon sx={{ mr: 1 }} fontSize="small" />
           Delete
         </MenuItem>
@@ -1444,6 +1512,14 @@ export default function DocumentManager() {
           >
             Edit
           </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteDocumentFromDetails}
+          >
+            Delete
+          </Button>
           <Button onClick={() => setDocumentDetailsOpen(false)}>
             Close
           </Button>
@@ -1513,6 +1589,14 @@ export default function DocumentManager() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Reviewer Selection Dialog */}
+      <ReviewerSelectionDialog
+        open={reviewerDialogOpen}
+        onClose={() => setReviewerDialogOpen(false)}
+        onSubmit={handleReviewerSelection}
+        documentId={documentToReview}
+      />
     </Box>
   );
 }
