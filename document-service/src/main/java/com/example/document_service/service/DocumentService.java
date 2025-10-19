@@ -19,7 +19,9 @@ public interface DocumentService {
     Document revise(String documentId, String user);
     Document updateStage(String documentId, Stage stage, String user, String comment);
     List<DocumentHistory> history(String documentId);
+    List<Document> getDocumentVersions(String documentId);
     void attachFileKey(String documentId, String fileKey, String user);
     void deleteDocument(String documentId);
     List<Document> getDocumentsByBomId(String bomId);
+    Document initiateChangeBasedEdit(String documentId, String changeId, String user);
 }

@@ -32,7 +32,12 @@ public class TaskController {
     private ZeebeClient zeebeClient;
 
     @GetMapping
-    public List<Task> getAllTasks() {
+    public List<Task> getAllTasks(@RequestParam(required = false) String assignedTo) {
+        // If assignedTo parameter is provided, filter by that user
+        // This ensures users only see tasks assigned to them
+        if (assignedTo != null && !assignedTo.isEmpty()) {
+            return taskService.getTasksByAssignedTo(assignedTo);
+        }
         return taskService.getAllTasks();
     }
 

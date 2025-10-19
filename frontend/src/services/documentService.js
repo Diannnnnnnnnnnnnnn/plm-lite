@@ -136,6 +136,16 @@ class DocumentService {
     }
   }
 
+  async getDocumentVersions(id) {
+    try {
+      const response = await this.api.get(`/documents/${id}/versions`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching document versions ${id}:`, error);
+      throw error;
+    }
+  }
+
   async submitForReview(id, reviewData) {
     try {
       const response = await this.api.post(`/documents/${id}/submit-review`, reviewData);

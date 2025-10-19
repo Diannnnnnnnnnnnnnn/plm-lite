@@ -29,7 +29,8 @@ import {
   ListItemSecondaryAction,
   LinearProgress,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  CircularProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -52,7 +53,9 @@ import {
   ViewKanban as KanbanViewIcon,
   Assignment as TaskIcon,
   Check as ApproveIcon,
-  Close as DeclineIcon
+  Close as DeclineIcon,
+  Download as DownloadIcon,
+  Visibility as ViewIcon
 } from '@mui/icons-material';
 import taskService from '../../services/taskService';
 import documentService from '../../services/documentService';
@@ -247,16 +250,43 @@ export default function TaskManager() {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState(null);
+  const [taskDocumentDetails, setTaskDocumentDetails] = useState(null);
+  const [loadingDocument, setLoadingDocument] = useState(false);
   const [loading, setLoading] = useState(true);
   const [kanbanGroupBy, setKanbanGroupBy] = useState('status'); // 'status' or 'type'
 
+  // Get current user from localStorage
+  const getCurrentUsername = () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        return userData.username || null;
+      }
+    } catch (error) {
+      console.error('Error getting current user:', error);
+    }
+    return null;
+  };
+
   // Fetch tasks from API on component mount
+  // IMPORTANT: Users can only see their own tasks (assigned to them)
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         setLoading(true);
-        const response = await taskService.getAllTasks();
-        console.log('Loaded tasks from API:', response);
+        const currentUser = getCurrentUsername();
+        
+        if (!currentUser) {
+          console.warn('No current user found, cannot load tasks');
+          setTasks([]);
+          return;
+        }
+
+        console.log('Loading tasks for user:', currentUser);
+        // Filter tasks by current user - users only see tasks assigned to them
+        const response = await taskService.getTasksByAssignee(currentUser);
+        console.log('Loaded tasks from API for user', currentUser, ':', response);
         setTasks(response);
       } catch (error) {
         console.error('Failed to load tasks:', error);
@@ -284,6 +314,36 @@ export default function TaskManager() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Fetch document details when task is selected
+  useEffect(() => {
+    const fetchDocumentDetails = async () => {
+      if (!selectedTaskForDetails) {
+        setTaskDocumentDetails(null);
+        return;
+      }
+
+      // Check if this is a document review task
+      const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
+      if (!documentId) {
+        setTaskDocumentDetails(null);
+        return;
+      }
+
+      try {
+        setLoadingDocument(true);
+        const document = await documentService.getDocumentById(documentId);
+        setTaskDocumentDetails(document);
+      } catch (error) {
+        console.error('Failed to load document details:', error);
+        setTaskDocumentDetails(null);
+      } finally {
+        setLoadingDocument(false);
+      }
+    };
+
+    fetchDocumentDetails();
+  }, [selectedTaskForDetails]);
 
   const [newTask, setNewTask] = useState({
     taskName: '',
@@ -368,16 +428,37 @@ export default function TaskManager() {
     setEditDialogOpen(true);
   };
 
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      await taskService.deleteTask(taskId);
+      
+      // Refresh tasks for current user after deletion
+      const currentUser = getCurrentUsername();
+      if (currentUser) {
+        const response = await taskService.getTasksByAssignee(currentUser);
+        setTasks(response);
+      }
+      
+      alert('Task deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task: ' + error.message);
+    }
   };
 
   const handleStatusChange = async (task, newStatus) => {
     try {
       await taskService.updateTaskStatus(task.id, newStatus);
-      // Refresh tasks
-      const response = await taskService.getAllTasks();
-      setTasks(response);
+      // Refresh tasks for current user only
+      const currentUser = getCurrentUsername();
+      if (currentUser) {
+        const response = await taskService.getTasksByAssignee(currentUser);
+        setTasks(response);
+      }
     } catch (error) {
       console.error('Error changing task status:', error);
       alert('Failed to update task status: ' + error.message);
@@ -456,9 +537,12 @@ export default function TaskManager() {
         alert('Change approved successfully!');
         setTaskDetailsOpen(false);
 
-        // Refresh tasks
-        const response = await taskService.getAllTasks();
-        setTasks(response);
+        // Refresh tasks for current user only
+        const currentUser = getCurrentUsername();
+        if (currentUser) {
+          const response = await taskService.getTasksByAssignee(currentUser);
+          setTasks(response);
+        }
       } else {
         // Handle document approval
         const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
@@ -475,9 +559,12 @@ export default function TaskManager() {
         alert('Document approved successfully! Status changed to RELEASED.');
         setTaskDetailsOpen(false);
 
-        // Refresh tasks
-        const response = await taskService.getAllTasks();
-        setTasks(response);
+        // Refresh tasks for current user only
+        const currentUser2 = getCurrentUsername();
+        if (currentUser2) {
+          const response = await taskService.getTasksByAssignee(currentUser2);
+          setTasks(response);
+        }
       }
     } catch (error) {
       console.error('Error approving review:', error);
@@ -494,9 +581,12 @@ export default function TaskManager() {
         alert('Change review task marked as completed (rejection not yet implemented)');
         setTaskDetailsOpen(false);
 
-        // Refresh tasks
-        const response = await taskService.getAllTasks();
-        setTasks(response);
+        // Refresh tasks for current user only
+        const currentUser = getCurrentUsername();
+        if (currentUser) {
+          const response = await taskService.getTasksByAssignee(currentUser);
+          setTasks(response);
+        }
         return;
       }
 
@@ -514,9 +604,12 @@ export default function TaskManager() {
       alert('Document declined. Status remains IN_WORK.');
       setTaskDetailsOpen(false);
 
-      // Refresh tasks
-      const response = await taskService.getAllTasks();
-      setTasks(response);
+      // Refresh tasks for current user only
+      const currentUser2 = getCurrentUsername();
+      if (currentUser2) {
+        const response = await taskService.getTasksByAssignee(currentUser2);
+        setTasks(response);
+      }
     } catch (error) {
       console.error('Error declining document:', error);
       alert('Failed to decline document: ' + error.message);
@@ -1083,6 +1176,145 @@ export default function TaskManager() {
                     </Typography>
                   </Paper>
                 </Grid>
+
+                {/* Document Details (for review tasks) */}
+                {taskDocumentDetails && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Document Details
+                      </Typography>
+                      
+                      {loadingDocument ? (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Document Title
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {taskDocumentDetails.title}
+                            </Typography>
+                          </Box>
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Document ID
+                            </Typography>
+                            <Typography variant="body1">
+                              {taskDocumentDetails.id}
+                            </Typography>
+                          </Box>
+
+                          <Box display="flex" gap={2}>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Status
+                              </Typography>
+                              <Chip
+                                label={taskDocumentDetails.status}
+                                color={
+                                  taskDocumentDetails.status === 'RELEASED' ? 'success' :
+                                  taskDocumentDetails.status === 'IN_REVIEW' ? 'warning' :
+                                  'default'
+                                }
+                                size="small"
+                              />
+                            </Box>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Stage
+                              </Typography>
+                              <Chip
+                                label={taskDocumentDetails.stage}
+                                color="primary"
+                                variant="outlined"
+                                size="small"
+                              />
+                            </Box>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Version
+                              </Typography>
+                              <Chip
+                                label={`v${taskDocumentDetails.revision || 0}.${taskDocumentDetails.versionNumber || taskDocumentDetails.version || 0}`}
+                                variant="outlined"
+                                size="small"
+                              />
+                            </Box>
+                          </Box>
+
+                          {taskDocumentDetails.description && (
+                            <Box>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Description
+                              </Typography>
+                              <Typography variant="body1" sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                                {taskDocumentDetails.description}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                              File
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = `http://localhost:8081/api/v1/documents/${taskDocumentDetails.id}/download`;
+                                  link.download = taskDocumentDetails.title;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                Download File
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<ViewIcon />}
+                                onClick={() => {
+                                  window.open(`http://localhost:8081/api/v1/documents/${taskDocumentDetails.id}/download`, '_blank');
+                                }}
+                              >
+                                View File
+                              </Button>
+                            </Box>
+                          </Box>
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Created By
+                            </Typography>
+                            <Typography variant="body1">
+                              {taskDocumentDetails.creator || 'Unknown'}
+                            </Typography>
+                          </Box>
+
+                          {taskDocumentDetails.createTime && (
+                            <Box>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Created Date
+                              </Typography>
+                              <Typography variant="body1">
+                                {new Date(taskDocumentDetails.createTime).toLocaleString()}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+                )}
               </Grid>
             </Box>
           )}

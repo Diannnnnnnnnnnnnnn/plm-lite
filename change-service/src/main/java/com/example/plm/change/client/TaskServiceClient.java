@@ -14,6 +14,7 @@ public interface TaskServiceClient {
         private String name;
         private String description;
         private Long userId;
+        private String assignedTo; // Username for task filtering
 
         public TaskDTO() {}
 
@@ -21,6 +22,13 @@ public interface TaskServiceClient {
             this.name = name;
             this.description = description;
             this.userId = userId;
+        }
+
+        public TaskDTO(String name, String description, Long userId, String assignedTo) {
+            this.name = name;
+            this.description = description;
+            this.userId = userId;
+            this.assignedTo = assignedTo;
         }
 
         public String getName() { return name; }
@@ -31,5 +39,8 @@ public interface TaskServiceClient {
 
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+
+        public String getAssignedTo() { return assignedTo; }
+        public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
     }
 }

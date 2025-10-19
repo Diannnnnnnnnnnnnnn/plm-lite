@@ -16,7 +16,7 @@
     </bpmn:serviceTask>
     <bpmn:userTask id="Activity_ReviewChange" name="Review Change">
       <bpmn:extensionElements>
-        <zeebe:assignmentDefinition assignee="=${assigneeId}" />
+        <zeebe:assignmentDefinition assignee="=assigneeId" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
@@ -48,7 +48,7 @@
     </bpmn:serviceTask>
     <bpmn:userTask id="Activity_ApproveChange" name="Approve Change">
       <bpmn:extensionElements>
-        <zeebe:assignmentDefinition assignee="=${approverIds}" />
+        <zeebe:assignmentDefinition assignee="=approverIds" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>

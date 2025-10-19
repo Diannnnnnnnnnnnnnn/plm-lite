@@ -27,6 +27,7 @@ public class Task implements Serializable { // Implement Serializable interface
     private String name;
     private String description;
     private Long userId; // Field to associate the task with a user
+    private String assignedTo; // Username of the person assigned to this task
     private String taskStatus; // Task status: TODO, IN_PROGRESS, COMPLETED
     private java.time.LocalDateTime createdAt; // Task creation timestamp
     private java.time.LocalDateTime dueDate; // Task due date
@@ -104,6 +105,14 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setDueDate(java.time.LocalDateTime dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public String getAssignedTo() {
+        return assignedTo;
+    }
+
+    public void setAssignedTo(String assignedTo) {
+        this.assignedTo = assignedTo;
     }
 
     public List<FileMetadata> getFiles() {

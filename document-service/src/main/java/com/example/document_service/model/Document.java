@@ -3,9 +3,10 @@ package com.example.document_service.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.example.plm.common.model.Status;
 import com.example.plm.common.model.Stage;
+import com.example.plm.common.model.Status;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -35,10 +36,14 @@ public class Document {
     private Status status;
 
     private String title;
+    private String description;
     private String creator;
     private LocalDateTime createTime = LocalDateTime.now();
     private String fileKey;
     private String bomId;  // Related BOM ID
+    
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean isActive = true;  // Flag to indicate if this is the current/active version
 
     public Document() {
         this.id = UUID.randomUUID().toString();
@@ -106,6 +111,14 @@ public class Document {
         this.title = title;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     public String getCreator() {
         return creator;
     }
@@ -138,6 +151,14 @@ public class Document {
         this.bomId = bomId;
     }
 
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
+    }
+
     @Override
     public String toString() {
         return "Document{" +
@@ -148,6 +169,7 @@ public class Document {
                 ", stage=" + stage +
                 ", status=" + status +
                 ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
                 ", creator='" + creator + '\'' +
                 ", createTime=" + createTime +
                 ", fileKey='" + fileKey + '\'' +

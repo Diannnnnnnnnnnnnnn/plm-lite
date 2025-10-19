@@ -47,13 +47,20 @@ public class ChangeService {
     @Autowired
     private DocumentServiceClient documentServiceClient;
 
-    @FeignClient(name = "document-service")
+    @FeignClient(name = "document-service", url = "http://localhost:8081")
     public interface DocumentServiceClient {
         @GetMapping("/api/documents/{id}")
         DocumentInfo getDocument(@PathVariable String id);
 
         @PutMapping("/api/documents/{id}/status")
         void updateDocumentStatus(@PathVariable String id, @RequestBody DocumentStatusUpdateRequest request);
+        
+        @org.springframework.web.bind.annotation.PostMapping("/api/v1/documents/{id}/initiate-change-edit")
+        DocumentInfo initiateChangeBasedEdit(
+            @PathVariable("id") String documentId,
+            @org.springframework.web.bind.annotation.RequestParam("changeId") String changeId,
+            @org.springframework.web.bind.annotation.RequestParam("user") String user
+        );
     }
 
     public static class DocumentInfo {
@@ -175,10 +182,18 @@ public class ChangeService {
         change.setStatus(Status.RELEASED);
         change = changeRepository.save(change);
 
-        documentServiceClient.updateDocumentStatus(
-            change.getChangeDocument(),
-            new DocumentStatusUpdateRequest(Status.IN_WORK)
-        );
+        // IMPORTANT: Unlock the document for editing via approved change
+        try {
+            documentServiceClient.initiateChangeBasedEdit(
+                change.getChangeDocument(),
+                changeId,
+                change.getCreator()
+            );
+            System.out.println("Document unlocked for editing via approved change: " + changeId);
+        } catch (Exception e) {
+            System.err.println("Failed to unlock document for change " + changeId + ": " + e.getMessage());
+            // Don't fail the approval if document unlock fails
+        }
 
         ChangeNode changeNode = changeNodeRepository.findById(changeId).orElse(null);
         if (changeNode != null) {

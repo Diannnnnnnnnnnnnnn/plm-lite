@@ -145,6 +145,20 @@ const getStageColor = (stage) => {
 };
 
 export default function DocumentManager() {
+  // Helper function to get current logged-in username
+  const getCurrentUsername = () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        return userData.username || 'Unknown User';
+      }
+    } catch (error) {
+      console.error('Error getting current user:', error);
+    }
+    return 'Unknown User';
+  };
+
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,6 +170,10 @@ export default function DocumentManager() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
   const [selectedDocumentForDetails, setSelectedDocumentForDetails] = useState(null);
+  const [documentHistory, setDocumentHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [versionDetailsOpen, setVersionDetailsOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -164,6 +182,7 @@ export default function DocumentManager() {
     status: '',
     description: ''
   });
+  const [editSelectedFile, setEditSelectedFile] = useState(null);
   const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
   const [documentToReview, setDocumentToReview] = useState(null);
 
@@ -224,6 +243,30 @@ export default function DocumentManager() {
 
     setFilteredDocuments(filtered);
   }, [documents, filterStatus, filterStage, debouncedSearchTerm]);
+
+  // Fetch document versions when document is selected for details
+  useEffect(() => {
+    const fetchDocumentVersions = async () => {
+      if (!selectedDocumentForDetails) {
+        setDocumentHistory([]);
+        return;
+      }
+
+      try {
+        setLoadingHistory(true);
+        const versions = await documentService.getDocumentVersions(selectedDocumentForDetails.id);
+        setDocumentHistory(Array.isArray(versions) ? versions : []);
+      } catch (error) {
+        console.error('Error fetching document versions:', error);
+        setDocumentHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    fetchDocumentVersions();
+  }, [selectedDocumentForDetails]);
+
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [bomSelectionOpen, setBomSelectionOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -446,6 +489,11 @@ export default function DocumentManager() {
       return;
     }
 
+    if (!newDocument.documentNumber) {
+      alert('Please provide a Document Number (Master ID). This is a unique identifier for your document.');
+      return;
+    }
+
     try {
       // Prepare document data for creation
       const documentData = {
@@ -462,7 +510,7 @@ export default function DocumentManager() {
       });
 
       alert('Starting upload...');
-      const response = await documentService.uploadDocument(documentData, selectedFile, 'Current User');
+      const response = await documentService.uploadDocument(documentData, selectedFile, getCurrentUsername());
       console.log('Document uploaded successfully:', response);
       alert('Upload successful!');
 
@@ -503,7 +551,18 @@ export default function DocumentManager() {
     } catch (error) {
       console.error('Error uploading document:', error);
       console.error('Error details:', error.response?.data || error.message);
-      alert(`Failed to upload document: ${error.response?.data?.message || error.message}`);
+      
+      // Check if this is a duplicate masterID error
+      const errorMessage = error.response?.data?.message || error.message;
+      if (errorMessage && errorMessage.includes('already in use')) {
+        alert(
+          '⚠️ Duplicate Master ID\n\n' +
+          errorMessage + '\n\n' +
+          'Please choose a different Document Number (Master ID) or leave it empty to auto-generate one.'
+        );
+      } else {
+        alert(`Failed to upload document: ${errorMessage}`);
+      }
     }
   };
 
@@ -533,15 +592,39 @@ export default function DocumentManager() {
 
   // Handle document download
   const handleDownload = async (documentItem) => {
+    if (!documentItem || !documentItem.id) {
+      alert('Cannot download: Document information is missing');
+      return;
+    }
+
+    if (!documentItem.fileKey) {
+      alert('Cannot download: No file attached to this document');
+      return;
+    }
+
     try {
-      console.log('Downloading document:', documentItem.id);
+      console.log('Downloading document:', documentItem.id, documentItem.title);
       const blob = await documentService.downloadDocument(documentItem.id);
+
+      if (!blob || blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
 
       // Create a download link and trigger it
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = documentItem.title || `document-${documentItem.id}`;
+      
+      // Try to extract filename from fileKey or use title
+      let filename = documentItem.title || `document-${documentItem.id}`;
+      if (documentItem.fileKey) {
+        const parts = documentItem.fileKey.split('_');
+        if (parts.length > 1) {
+          filename = parts.slice(1).join('_'); // Get original filename
+        }
+      }
+      
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
 
@@ -549,7 +632,7 @@ export default function DocumentManager() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log('Download initiated for:', documentItem.title);
+      console.log('Download initiated for:', filename);
     } catch (error) {
       console.error('Failed to download document:', error);
       alert(`Failed to download document: ${error.response?.data?.message || error.message}`);
@@ -559,6 +642,23 @@ export default function DocumentManager() {
   // Handle document edit
   const handleEdit = (documentItem) => {
     console.log('Edit document:', documentItem.id);
+    
+    // CRITICAL BUSINESS RULE: RELEASED documents cannot be edited directly
+    // They require an approved Change Request
+    if (documentItem.status === 'RELEASED') {
+      alert(
+        '⚠️ Cannot Edit RELEASED Document\n\n' +
+        'RELEASED documents are locked and cannot be edited directly.\n\n' +
+        'To make changes to this document:\n' +
+        '1. Navigate to "Changes" section\n' +
+        '2. Create a new Change Request\n' +
+        '3. Select this document in the change request\n' +
+        '4. Once the change is approved, you can edit the document\n\n' +
+        'This ensures all changes to released documents are properly tracked and approved.'
+      );
+      return;
+    }
+    
     setEditingDocument(documentItem);
     setEditFormData({
       title: documentItem.title || '',
@@ -586,16 +686,36 @@ export default function DocumentManager() {
       // Call the update API - add user information
       const updateRequest = {
         ...editFormData,
-        user: 'Current User' // TODO: Get from authentication context
+        user: getCurrentUsername()
       };
       const updatedDocument = await documentService.updateDocument(editingDocument.id, updateRequest);
 
-      // Update the document in the local state
-      setDocuments(prevDocs =>
-        prevDocs.map(doc =>
-          doc.id === editingDocument.id ? { ...doc, ...updatedDocument } : doc
-        )
-      );
+      console.log('Updated document response:', updatedDocument);
+      // Note: The backend creates a NEW document with a new ID (snapshot versioning)
+      const newDocumentId = updatedDocument.id;
+
+      // If a new file is selected, upload it to the NEW document
+      if (editSelectedFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', editSelectedFile);
+          formData.append('user', getCurrentUsername());
+
+          // Use the NEW document ID from the response
+          await documentService.api.post(`/documents/${newDocumentId}/upload`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          console.log('File uploaded successfully to new version');
+        } catch (uploadError) {
+          console.error('Failed to upload file:', uploadError);
+          alert(`Document updated but file upload failed: ${uploadError.response?.data?.message || uploadError.message}`);
+        }
+      }
+
+      // Reload documents to get the updated data
+      await loadDocuments();
 
       // Close the dialog and reset form
       setEditDialogOpen(false);
@@ -606,8 +726,10 @@ export default function DocumentManager() {
         status: '',
         description: ''
       });
+      setEditSelectedFile(null);
 
-      console.log('Document updated successfully');
+      console.log('Document updated successfully with new version ID:', newDocumentId);
+      alert('Document updated successfully! New version created.');
     } catch (error) {
       console.error('Failed to update document:', error);
       alert(`Failed to update document: ${error.response?.data?.message || error.message}`);
@@ -624,6 +746,7 @@ export default function DocumentManager() {
       status: '',
       description: ''
     });
+    setEditSelectedFile(null);
   };
 
   return (
@@ -785,7 +908,7 @@ export default function DocumentManager() {
                           />
                         </TableCell>
                         <TableCell>{document.creator}</TableCell>
-                        <TableCell>v{document.revision}.{document.version}</TableCell>
+                        <TableCell>v{document.revision}.{document.versionNumber !== undefined ? document.versionNumber : 0}</TableCell>
                         <TableCell>{new Date(document.createTime).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Chip
@@ -856,7 +979,7 @@ export default function DocumentManager() {
                           />
                         </Box>
                         <Typography variant="body2" color="textSecondary" paragraph>
-                          Version: v{document.revision}.{document.version}
+                          Version: v{document.revision}.{document.versionNumber !== undefined ? document.versionNumber : 0}
                         </Typography>
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                           <Typography variant="body2" color="textSecondary">
@@ -984,10 +1107,10 @@ export default function DocumentManager() {
                             secondary={
                               <Box sx={{ mt: 1 }}>
                                 <Typography variant="body2" sx={{ color: 'primary.contrastText', opacity: 0.8 }}>
-                                  BOM ID: {bom.id} • Creator: {bom.creator}
+                                  BOM ID: {bom.documentId} • Creator: {bom.creator}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: 'primary.contrastText', opacity: 0.8 }}>
-                                  Document: {bom.documentId} • Created: {new Date(bom.createTime).toLocaleDateString()}
+                                  System ID: {bom.id} • Created: {new Date(bom.createTime).toLocaleDateString()}
                                 </Typography>
                               </Box>
                             }
@@ -1129,12 +1252,14 @@ export default function DocumentManager() {
           />
           <TextField
             fullWidth
-            label="Document Number"
+            label="Document Number (Master ID)"
             variant="outlined"
             value={newDocument.documentNumber}
             onChange={(e) => setNewDocument({...newDocument, documentNumber: e.target.value})}
             margin="normal"
             placeholder="e.g., SPEC-001, TD-001"
+            required
+            helperText="This is a unique identifier for your document. It cannot be reused."
           />
           <TextField
             fullWidth
@@ -1211,7 +1336,7 @@ export default function DocumentManager() {
           <Button
             variant="contained"
             onClick={handleCreateDocument}
-            disabled={!selectedFile || !newDocument.title}
+            disabled={!selectedFile || !newDocument.title || !newDocument.documentNumber}
           >
             Upload Document
           </Button>
@@ -1314,7 +1439,7 @@ export default function DocumentManager() {
                     size="small"
                   />
                   <Chip
-                    label={`v${selectedDocumentForDetails.revision}.${selectedDocumentForDetails.version}`}
+                    label={`v${selectedDocumentForDetails.revision}.${selectedDocumentForDetails.versionNumber !== undefined ? selectedDocumentForDetails.versionNumber : 0}`}
                     variant="outlined"
                     size="small"
                   />
@@ -1370,7 +1495,7 @@ export default function DocumentManager() {
                           Created By
                         </Typography>
                         <Typography variant="body1">
-                          {selectedDocumentForDetails.creator}
+                          {selectedDocumentForDetails.creator || selectedDocumentForDetails.master?.creator || 'Unknown'}
                         </Typography>
                       </Box>
                       <Box>
@@ -1378,7 +1503,11 @@ export default function DocumentManager() {
                           Created Date
                         </Typography>
                         <Typography variant="body1">
-                          {new Date(selectedDocumentForDetails.createTime).toLocaleString()}
+                          {selectedDocumentForDetails.createTime 
+                            ? new Date(selectedDocumentForDetails.createTime).toLocaleString()
+                            : (selectedDocumentForDetails.master?.createTime 
+                                ? new Date(selectedDocumentForDetails.master.createTime).toLocaleString()
+                                : 'Not available')}
                         </Typography>
                       </Box>
                       <Box>
@@ -1386,7 +1515,7 @@ export default function DocumentManager() {
                           Current Version
                         </Typography>
                         <Typography variant="body1">
-                          Revision {selectedDocumentForDetails.revision}, Version {selectedDocumentForDetails.version}
+                          Revision {selectedDocumentForDetails.revision || 0}, Version {selectedDocumentForDetails.versionNumber !== undefined ? selectedDocumentForDetails.versionNumber : 0}
                         </Typography>
                       </Box>
                     </Box>
@@ -1426,52 +1555,67 @@ export default function DocumentManager() {
                       >
                         Preview
                       </Button>
-                      <Button
-                        variant="outlined"
-                        startIcon={<EditIcon />}
-                        size="small"
-                        onClick={() => handleEdit(selectedDocumentForDetails)}
+                      <Tooltip 
+                        title={
+                          selectedDocumentForDetails?.status === 'RELEASED' 
+                            ? "RELEASED documents cannot be edited directly. Create a Change Request to modify this document." 
+                            : "Edit document"
+                        }
                       >
-                        Edit
-                      </Button>
+                        <span>
+                          <Button
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            size="small"
+                            onClick={() => handleEdit(selectedDocumentForDetails)}
+                            disabled={selectedDocumentForDetails?.status === 'RELEASED'}
+                          >
+                            Edit
+                          </Button>
+                        </span>
+                      </Tooltip>
                     </Box>
                   </Paper>
                 </Grid>
 
-                {/* Workflow Status */}
+                {/* Description */}
+                {selectedDocumentForDetails.description && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Description
+                      </Typography>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedDocumentForDetails.description}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+
+                {/* Workflow Status & Progress */}
                 <Grid item xs={12}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom color="primary">
-                      Workflow Status
+                      Workflow Status & Progress
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1">Current Stage</Typography>
-                        <Chip
-                          label={selectedDocumentForDetails.stage}
-                          color={getStageColor(selectedDocumentForDetails.stage)}
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1">Current Status</Typography>
-                        <Chip
-                          label={selectedDocumentForDetails.status}
-                          color={getStatusColor(selectedDocumentForDetails.status)}
-                        />
-                      </Box>
-                      {/* Workflow progression visualization */}
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                          Stage Progression
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {/* Status progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Status Progression
                         </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          {['CONCEPTUAL_DESIGN', 'PRELIMINARY_DESIGN', 'DETAILED_DESIGN', 'MANUFACTURING'].map((stage, index) => (
-                            <Box key={stage} sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['IN_WORK', 'IN_REVIEW', 'RELEASED', 'OBSOLETE'].map((status, index) => (
+                            <Box key={status} sx={{ display: 'flex', alignItems: 'center' }}>
                               <Chip
-                                label={stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                size="small"
-                                variant={selectedDocumentForDetails.stage === stage ? 'filled' : 'outlined'}
-                                color={selectedDocumentForDetails.stage === stage ? getStageColor(stage) : 'default'}
+                                label={status.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedDocumentForDetails.status === status ? 'filled' : 'outlined'}
+                                color={selectedDocumentForDetails.status === status ? getStatusColor(status) : 'default'}
+                                sx={{
+                                  fontWeight: selectedDocumentForDetails.status === status ? 'bold' : 'normal',
+                                  boxShadow: selectedDocumentForDetails.status === status ? 2 : 0
+                                }}
                               />
                               {index < 3 && (
                                 <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
@@ -1480,7 +1624,189 @@ export default function DocumentManager() {
                           ))}
                         </Box>
                       </Box>
+
+                      {/* Stage progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Stage Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['CONCEPTUAL_DESIGN', 'PRELIMINARY_DESIGN', 'DETAILED_DESIGN', 'MANUFACTURING', 'IN_SERVICE'].map((stage, index) => (
+                            <Box key={stage} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={stage.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedDocumentForDetails.stage === stage ? 'filled' : 'outlined'}
+                                color={selectedDocumentForDetails.stage === stage ? getStageColor(stage) : 'default'}
+                                sx={{
+                                  fontWeight: selectedDocumentForDetails.stage === stage ? 'bold' : 'normal',
+                                  boxShadow: selectedDocumentForDetails.stage === stage ? 2 : 0
+                                }}
+                              />
+                              {index < 4 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
                     </Box>
+                  </Paper>
+                </Grid>
+
+                {/* Document Version History */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="h6" color="primary">
+                        Version History
+                      </Typography>
+                      <Chip 
+                        label="Click to view version details" 
+                        size="small" 
+                        variant="outlined"
+                        color="info"
+                        icon={<ViewIcon />}
+                      />
+                    </Box>
+                    {loadingHistory ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                        <CircularProgress />
+                      </Box>
+                    ) : documentHistory.length === 0 ? (
+                      <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
+                        No version history available
+                      </Typography>
+                    ) : (
+                      <Box sx={{ mt: 2 }}>
+                        {documentHistory.map((version, index) => (
+                          <Box
+                            key={version.id}
+                            sx={{
+                              p: 2,
+                              mb: 1,
+                              borderLeft: '4px solid',
+                              borderColor: version.id === selectedDocumentForDetails.id ? 'primary.main' : 'grey.300',
+                              bgcolor: version.id === selectedDocumentForDetails.id ? 'primary.light' : 'transparent',
+                              '&:hover': { bgcolor: 'action.hover' },
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            onClick={() => {
+                              console.log('Version clicked:', version.id, version.title);
+                              // Open version details dialog for any version
+                              setSelectedVersion(version);
+                              setVersionDetailsOpen(true);
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: version.id === selectedDocumentForDetails.id ? 'primary.dark' : 'text.primary' }}>
+                                  v{version.revision}.{version.versionNumber !== undefined ? version.versionNumber : 0}
+                                </Typography>
+                                {version.id === selectedDocumentForDetails.id && (
+                                  <Chip label="Current" size="small" color="primary" />
+                                )}
+                                {index === 0 && version.id !== selectedDocumentForDetails.id && (
+                                  <Chip label="Latest" size="small" color="success" variant="outlined" />
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Chip 
+                                  label={version.status} 
+                                  size="small" 
+                                  color={getStatusColor(version.status)}
+                                />
+                                <Chip 
+                                  label={version.stage} 
+                                  size="small" 
+                                  color={getStageColor(version.stage)}
+                                  variant="outlined"
+                                />
+                              </Box>
+                            </Box>
+                            
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+                              <Box>
+                                <Typography variant="caption" color="textSecondary">
+                                  Created By
+                                </Typography>
+                                <Typography variant="body2">
+                                  {version.creator || 'Unknown'}
+                                </Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="caption" color="textSecondary">
+                                  Created Date
+                                </Typography>
+                                <Typography variant="body2">
+                                  {version.createTime ? new Date(version.createTime).toLocaleString() : 'Unknown'}
+                                </Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="caption" color="textSecondary">
+                                  Document ID
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                                  {version.id}
+                                </Typography>
+                              </Box>
+                              {version.fileKey && (
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">
+                                    File
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {version.fileKey.split('_').slice(1).join('_') || version.fileKey}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+
+                            {version.description && (
+                              <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                                <Typography variant="caption" color="textSecondary">
+                                  Description
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                  {version.description}
+                                </Typography>
+                              </Box>
+                            )}
+
+                            {/* Action Buttons */}
+                            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<ViewIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('View This Version button clicked:', version.id);
+                                  setSelectedVersion(version);
+                                  setVersionDetailsOpen(true);
+                                }}
+                              >
+                                View Details
+                              </Button>
+                              {version.fileKey && (
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  startIcon={<DownloadIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(version);
+                                  }}
+                                >
+                                  Download
+                                </Button>
+                              )}
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
                   </Paper>
                 </Grid>
               </Grid>
@@ -1505,13 +1831,24 @@ export default function DocumentManager() {
           >
             Download
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={() => handleEdit(selectedDocumentForDetails)}
+          <Tooltip 
+            title={
+              selectedDocumentForDetails?.status === 'RELEASED' 
+                ? "RELEASED documents cannot be edited directly. Create a Change Request to modify this document." 
+                : "Edit document"
+            }
           >
-            Edit
-          </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={() => handleEdit(selectedDocumentForDetails)}
+                disabled={selectedDocumentForDetails?.status === 'RELEASED'}
+              >
+                Edit
+              </Button>
+            </span>
+          </Tooltip>
           <Button
             variant="outlined"
             color="error"
@@ -1580,12 +1917,292 @@ export default function DocumentManager() {
               rows={3}
               variant="outlined"
             />
+
+            {/* File Upload Section */}
+            <Box sx={{ border: '1px dashed grey', borderRadius: 1, p: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Replace Document File (Optional)
+              </Typography>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<UploadIcon />}
+                fullWidth
+              >
+                {editSelectedFile ? editSelectedFile.name : 'Choose New File'}
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setEditSelectedFile(e.target.files[0]);
+                    }
+                  }}
+                />
+              </Button>
+              {editSelectedFile && (
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={`${editSelectedFile.name} (${(editSelectedFile.size / 1024).toFixed(2)} KB)`}
+                    onDelete={() => setEditSelectedFile(null)}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+              )}
+              {editingDocument?.fileKey && !editSelectedFile && (
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                  Current file: {editingDocument.fileKey.split('_').slice(1).join('_') || editingDocument.fileKey}
+                </Typography>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditDialogClose}>Cancel</Button>
           <Button onClick={handleEditSubmit} variant="contained" color="primary">
             Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Version Details Dialog */}
+      <Dialog
+        open={versionDetailsOpen}
+        onClose={() => {
+          setVersionDetailsOpen(false);
+          setSelectedVersion(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center" gap={1}>
+              {selectedVersion && getFileIcon(selectedVersion.fileKey?.split('.').pop() || 'document')}
+              <Typography variant="h5" component="div">
+                Version Details - v{selectedVersion?.revision}.{selectedVersion?.versionNumber !== undefined ? selectedVersion?.versionNumber : 0}
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={() => {
+                setVersionDetailsOpen(false);
+                setSelectedVersion(null);
+              }}
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedVersion && (
+            <Box sx={{ pt: 1 }}>
+              {/* Version Header */}
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="h6" component="div" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  {selectedVersion.title}
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Document Number: {selectedVersion.master?.documentNumber || 'Not assigned'}
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  <Chip
+                    label={selectedVersion.status}
+                    color={getStatusColor(selectedVersion.status)}
+                    size="small"
+                  />
+                  <Chip
+                    label={selectedVersion.stage}
+                    color={getStageColor(selectedVersion.stage)}
+                    size="small"
+                  />
+                  <Chip
+                    label={`v${selectedVersion.revision}.${selectedVersion.versionNumber !== undefined ? selectedVersion.versionNumber : 0}`}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
+              </Box>
+
+              {/* Version Information Grid */}
+              <Grid container spacing={3}>
+                {/* Basic Information */}
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Basic Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Document ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedVersion.id}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          File Key
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                          {selectedVersion.fileKey || 'Not specified'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Master Document ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedVersion.master?.id || 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* Version & Timeline */}
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Version & Timeline
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created By
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedVersion.creator || selectedVersion.master?.creator || 'Unknown'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created Date
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedVersion.createTime 
+                            ? new Date(selectedVersion.createTime).toLocaleString()
+                            : (selectedVersion.master?.createTime 
+                                ? new Date(selectedVersion.master.createTime).toLocaleString()
+                                : 'Not available')}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Version
+                        </Typography>
+                        <Typography variant="body1">
+                          Revision {selectedVersion.revision || 0}, Version {selectedVersion.versionNumber !== undefined ? selectedVersion.versionNumber : 0}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* File Information */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      File Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {getFileIcon(selectedVersion.fileKey?.split('.').pop() || 'document')}
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          {selectedVersion.title}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="textSecondary">
+                        ({selectedVersion.fileKey?.split('.').pop()?.toUpperCase() || 'Unknown'} file)
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      {selectedVersion?.fileKey ? (
+                        <>
+                          <Button
+                            variant="contained"
+                            startIcon={<DownloadIcon />}
+                            size="small"
+                            onClick={() => handleDownload(selectedVersion)}
+                          >
+                            Download
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            startIcon={<ViewIcon />}
+                            size="small"
+                          >
+                            Preview
+                          </Button>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          No file attached to this version
+                        </Typography>
+                      )}
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* Description */}
+                {selectedVersion.description && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Description
+                      </Typography>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedVersion.description}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+
+                {/* Status Summary */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Status Summary
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1">Stage</Typography>
+                        <Chip
+                          label={selectedVersion.stage}
+                          color={getStageColor(selectedVersion.stage)}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1">Status</Typography>
+                        <Chip
+                          label={selectedVersion.status}
+                          color={getStatusColor(selectedVersion.status)}
+                        />
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {selectedVersion?.fileKey && (
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => handleDownload(selectedVersion)}
+            >
+              Download
+            </Button>
+          )}
+          <Button onClick={() => {
+            setVersionDetailsOpen(false);
+            setSelectedVersion(null);
+          }}>
+            Close
           </Button>
         </DialogActions>
       </Dialog>

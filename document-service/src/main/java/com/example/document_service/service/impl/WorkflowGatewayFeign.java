@@ -1,11 +1,17 @@
 package com.example.document_service.service.impl;
 
 import com.example.document_service.client.WorkflowOrchestratorClient;
+import com.example.document_service.dto.workflow.StartDocumentApprovalRequest;
 import com.example.document_service.service.gateway.WorkflowGateway;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Feign-based implementation of WorkflowGateway
+ * Delegates workflow operations to Camunda via workflow-orchestrator service
+ */
 @Component
 public class WorkflowGatewayFeign implements WorkflowGateway {
 
@@ -17,11 +23,38 @@ public class WorkflowGatewayFeign implements WorkflowGateway {
 
     @Override
     public void startReviewProcess(String documentId, String masterId, String version, String creator, List<String> reviewers) {
-        client.startReviewProcess(documentId, masterId, version, creator, reviewers);
+        System.out.println("🔵 WorkflowGateway: Starting Camunda document approval workflow");
+        System.out.println("   Document ID: " + documentId);
+        System.out.println("   Master ID: " + masterId);
+        System.out.println("   Version: " + version);
+        System.out.println("   Creator: " + creator);
+        System.out.println("   Reviewers: " + reviewers);
+
+        try {
+            // Create request DTO
+            StartDocumentApprovalRequest request = new StartDocumentApprovalRequest(
+                documentId, masterId, version, creator, reviewers
+            );
+
+            // Call workflow-orchestrator to start Camunda workflow
+            Map<String, String> response = client.startDocumentApprovalWorkflow(request);
+            
+            System.out.println("   ✓ Workflow started successfully!");
+            System.out.println("   Process Instance Key: " + response.get("processInstanceKey"));
+            System.out.println("   Status: " + response.get("status"));
+            
+        } catch (Exception e) {
+            System.err.println("   ❌ Failed to start workflow: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to start document approval workflow", e);
+        }
     }
 
     @Override
     public void notifyApprovalResult(String documentId, boolean approved, String approver, String comment) {
-        client.notifyApprovalResult(documentId, approved, approver, comment);
+        System.out.println("🔵 WorkflowGateway: Notification for document: " + documentId);
+        System.out.println("   Approved: " + approved + ", Approver: " + approver);
+        // TODO: Implement task completion when integrated with frontend
+        // This will be called when a user completes a review task
     }
 }

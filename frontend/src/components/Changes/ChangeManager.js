@@ -60,7 +60,9 @@ import {
   Category as PartIcon,
   ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
-  ViewList as ListViewIcon
+  ViewList as ListViewIcon,
+  CloudDownload as CloudDownloadIcon,
+  InsertDriveFile as FileIcon
 } from '@mui/icons-material';
 
 const mockChanges = [
@@ -105,10 +107,13 @@ const mockChanges = [
 const getStatusColor = (status) => {
   switch (status) {
     case 'DRAFT': return 'default';
+    case 'IN_WORK': return 'primary';
     case 'IN_REVIEW': return 'warning';
     case 'APPROVED': return 'success';
     case 'REJECTED': return 'error';
     case 'IMPLEMENTED': return 'info';
+    case 'RELEASED': return 'success';
+    case 'OBSOLETE': return 'error';
     default: return 'default';
   }
 };
@@ -119,6 +124,12 @@ const getStageColor = (stage) => {
     case 'DEVELOPMENT': return 'primary';
     case 'PRODUCTION': return 'success';
     case 'OBSOLETE': return 'error';
+    case 'CONCEPTUAL_DESIGN': return 'info';
+    case 'PRELIMINARY_DESIGN': return 'primary';
+    case 'DETAILED_DESIGN': return 'warning';
+    case 'MANUFACTURING': return 'success';
+    case 'IN_SERVICE': return 'success';
+    case 'RETIRED': return 'error';
     default: return 'default';
   }
 };
@@ -133,6 +144,20 @@ const getClassColor = (changeClass) => {
 };
 
 export default function ChangeManager() {
+  // Helper function to get current logged-in username
+  const getCurrentUsername = () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        return userData.username || 'Unknown User';
+      }
+    } catch (error) {
+      console.error('Error getting current user:', error);
+    }
+    return 'Unknown User';
+  };
+
   const [changes, setChanges] = useState([]);
   const [filteredChanges, setFilteredChanges] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -191,6 +216,10 @@ export default function ChangeManager() {
   const [expandedBOMs, setExpandedBOMs] = useState(new Set());
   const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
   const [changeToReview, setChangeToReview] = useState(null);
+  const [bomDetailsDialogOpen, setBomDetailsDialogOpen] = useState(false);
+  const [selectedBomForDetails, setSelectedBomForDetails] = useState(null);
+  const [documentDetailsDialogOpen, setDocumentDetailsDialogOpen] = useState(false);
+  const [selectedDocumentForDetails, setSelectedDocumentForDetails] = useState(null);
 
   const [newChange, setNewChange] = useState({
     title: '',
@@ -342,8 +371,11 @@ export default function ChangeManager() {
   };
 
   const getFilteredDocuments = () => {
-    if (!documentSearchTerm) return availableDocuments;
-    return availableDocuments.filter(doc =>
+    // Filter to only show RELEASED documents
+    const releasedDocuments = availableDocuments.filter(doc => doc.status === 'RELEASED');
+    
+    if (!documentSearchTerm) return releasedDocuments;
+    return releasedDocuments.filter(doc =>
       doc.title.toLowerCase().includes(documentSearchTerm.toLowerCase()) ||
       doc.creator.toLowerCase().includes(documentSearchTerm.toLowerCase()) ||
       (doc.master && doc.master.documentNumber.toLowerCase().includes(documentSearchTerm.toLowerCase()))
@@ -382,25 +414,29 @@ export default function ChangeManager() {
     let enrichedChange = { ...change };
 
     try {
-      // Fetch BOM name if product ID exists
+      // Fetch BOM data if product ID exists
       if (change.product) {
         try {
           const bom = await bomService.getBomById(change.product);
           enrichedChange.productName = bom.description || bom.documentId;
+          enrichedChange.productData = bom; // Store full BOM data
         } catch (error) {
           console.error('Error fetching BOM:', error);
           enrichedChange.productName = change.product;
+          enrichedChange.productData = null;
         }
       }
 
-      // Fetch document name if changeDocument ID exists
+      // Fetch document data if changeDocument ID exists
       if (change.changeDocument) {
         try {
           const doc = await documentService.getDocumentById(change.changeDocument);
           enrichedChange.documentName = doc.title || doc.masterId;
+          enrichedChange.documentData = doc; // Store full document data
         } catch (error) {
           console.error('Error fetching document:', error);
           enrichedChange.documentName = change.changeDocument;
+          enrichedChange.documentData = null;
         }
       }
     } catch (error) {
@@ -409,6 +445,76 @@ export default function ChangeManager() {
 
     setSelectedChangeForDetails(enrichedChange);
     setChangeDetailsOpen(true);
+  };
+
+  const handleViewBomDetails = async (bomId) => {
+    try {
+      const bom = await bomService.getBomById(bomId);
+      setSelectedBomForDetails(bom);
+      setBomDetailsDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching BOM details:', error);
+      alert('Failed to load BOM details: ' + error.message);
+    }
+  };
+
+  const handleViewDocumentDetails = async (documentId) => {
+    try {
+      const doc = await documentService.getDocumentById(documentId);
+      setSelectedDocumentForDetails(doc);
+      setDocumentDetailsDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching document details:', error);
+      alert('Failed to load document details: ' + error.message);
+    }
+  };
+
+  const handleDownloadDocument = async (document) => {
+    if (!document || !document.id) {
+      alert('Cannot download: Document information is missing');
+      return;
+    }
+
+    if (!document.fileKey) {
+      alert('Cannot download: No file attached to this document');
+      return;
+    }
+
+    try {
+      console.log('Downloading document:', document.id, document.title);
+      const blob = await documentService.downloadDocument(document.id);
+
+      if (!blob || blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Try to extract filename from fileKey or use title
+      let filename = document.title || `document-${document.id}`;
+      if (document.fileKey) {
+        const parts = document.fileKey.split('_');
+        if (parts.length > 1) {
+          filename = parts.slice(1).join('_'); // Get original filename
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log('Download initiated for:', filename);
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      alert(`Failed to download document: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   const handleViewChange = (change) => {
@@ -424,7 +530,7 @@ export default function ChangeManager() {
   const handleReviewerSelection = async (reviewerIds) => {
     try {
       const reviewData = {
-        user: localStorage.getItem('username') || 'System User',
+        user: getCurrentUsername(),
         reviewerIds: reviewerIds
       };
 
@@ -479,7 +585,7 @@ export default function ChangeManager() {
   const handleCreateChange = async () => {
     try {
       setLoading(true);
-      const currentUser = localStorage.getItem('username') || 'System User';
+      const currentUser = getCurrentUsername();
       const changeData = {
         title: newChange.title,
         changeClass: newChange.changeClass,
@@ -992,19 +1098,53 @@ export default function ChangeManager() {
                       </Box>
                       <Box>
                         <Typography variant="subtitle2" color="textSecondary">
-                          Related Product
+                          Related Product (BOM)
                         </Typography>
+                        {selectedChangeForDetails.product ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body1">
-                          {selectedChangeForDetails.productName || selectedChangeForDetails.product || 'Not specified'}
+                              {selectedChangeForDetails.productName || selectedChangeForDetails.product}
                         </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<ViewIcon />}
+                              onClick={() => handleViewBomDetails(selectedChangeForDetails.product)}
+                              sx={{ ml: 1 }}
+                            >
+                              View BOM
+                            </Button>
+                          </Box>
+                        ) : (
+                          <Typography variant="body1" color="textSecondary">
+                            Not specified
+                          </Typography>
+                        )}
                       </Box>
                       <Box>
                         <Typography variant="subtitle2" color="textSecondary">
                           Change Document
                         </Typography>
+                        {selectedChangeForDetails.changeDocument ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body1">
-                          {selectedChangeForDetails.documentName || selectedChangeForDetails.changeDocument || 'Not specified'}
+                              {selectedChangeForDetails.documentName || selectedChangeForDetails.changeDocument}
                         </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<ViewIcon />}
+                              onClick={() => handleViewDocumentDetails(selectedChangeForDetails.changeDocument)}
+                              sx={{ ml: 1 }}
+                            >
+                              View Document
+                            </Button>
+                          </Box>
+                        ) : (
+                          <Typography variant="body1" color="textSecondary">
+                            Not specified
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
                   </Paper>
@@ -1070,36 +1210,52 @@ export default function ChangeManager() {
                     <Typography variant="h6" gutterBottom color="primary">
                       Workflow Status & Progress
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1">Current Stage</Typography>
-                        <Chip
-                          label={selectedChangeForDetails.stage}
-                          color={getStageColor(selectedChangeForDetails.stage)}
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1">Current Status</Typography>
-                        <Chip
-                          label={selectedChangeForDetails.status}
-                          color={getStatusColor(selectedChangeForDetails.status)}
-                        />
-                      </Box>
-                      {/* Workflow progression visualization */}
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {/* Status progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
                           Status Progression
                         </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          {['DRAFT', 'IN_REVIEW', 'APPROVED', 'IMPLEMENTED'].map((status, index) => (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['IN_WORK', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'IMPLEMENTED'].map((status, index) => (
                             <Box key={status} sx={{ display: 'flex', alignItems: 'center' }}>
                               <Chip
-                                label={status.replace('_', ' ')}
-                                size="small"
+                                label={status.replace(/_/g, ' ')}
+                                size="medium"
                                 variant={selectedChangeForDetails.status === status ? 'filled' : 'outlined'}
                                 color={selectedChangeForDetails.status === status ? getStatusColor(status) : 'default'}
+                                sx={{
+                                  fontWeight: selectedChangeForDetails.status === status ? 'bold' : 'normal',
+                                  boxShadow: selectedChangeForDetails.status === status ? 2 : 0
+                                }}
                               />
-                              {index < 3 && (
+                              {index < 4 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+
+                      {/* Stage progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Stage Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['CONCEPTUAL_DESIGN', 'PRELIMINARY_DESIGN', 'DETAILED_DESIGN', 'MANUFACTURING', 'IN_SERVICE'].map((stage, index) => (
+                            <Box key={stage} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={stage.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedChangeForDetails.stage === stage ? 'filled' : 'outlined'}
+                                color={selectedChangeForDetails.stage === stage ? getStageColor(stage) : 'default'}
+                                sx={{
+                                  fontWeight: selectedChangeForDetails.stage === stage ? 'bold' : 'normal',
+                                  boxShadow: selectedChangeForDetails.stage === stage ? 2 : 0
+                                }}
+                              />
+                              {index < 4 && (
                                 <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
                               )}
                             </Box>
@@ -1256,10 +1412,10 @@ export default function ChangeManager() {
                             secondary={
                               <Box sx={{ mt: 1 }}>
                                 <Typography variant="body2" sx={{ color: 'primary.contrastText', opacity: 0.8 }}>
-                                  BOM ID: {bom.id} • Creator: {bom.creator}
+                                  BOM ID: {bom.documentId} • Creator: {bom.creator}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: 'primary.contrastText', opacity: 0.8 }}>
-                                  Document: {bom.documentId} • Created: {new Date(bom.createTime).toLocaleDateString()}
+                                  System ID: {bom.id} • Created: {new Date(bom.createTime).toLocaleDateString()}
                                 </Typography>
                               </Box>
                             }
@@ -1444,6 +1600,13 @@ export default function ChangeManager() {
               </List>
             </Paper>
           )}
+
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+            <Typography variant="body2" color="info.dark">
+              <strong>Note:</strong> Only <strong>RELEASED</strong> documents can be selected for change requests. 
+              Documents must be released before they can be modified through the change management process.
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDocumentSelectionOpen(false)}>Cancel</Button>
@@ -1464,6 +1627,7 @@ export default function ChangeManager() {
               >
                 <MenuItem value="All">All Statuses</MenuItem>
                 <MenuItem value="DRAFT">Draft</MenuItem>
+                <MenuItem value="IN_WORK">In Work</MenuItem>
                 <MenuItem value="IN_REVIEW">In Review</MenuItem>
                 <MenuItem value="APPROVED">Approved</MenuItem>
                 <MenuItem value="REJECTED">Rejected</MenuItem>
@@ -1521,6 +1685,495 @@ export default function ChangeManager() {
         onSubmit={handleReviewerSelection}
         documentId={changeToReview}
       />
+
+      {/* BOM Details Dialog */}
+      <Dialog
+        open={bomDetailsDialogOpen}
+        onClose={() => {
+          setBomDetailsDialogOpen(false);
+          setSelectedBomForDetails(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center" gap={1}>
+              <BOMIcon color="primary" />
+              <Typography variant="h5" component="div">
+                BOM Details
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={() => {
+                setBomDetailsDialogOpen(false);
+                setSelectedBomForDetails(null);
+              }}
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedBomForDetails && (
+            <Box sx={{ pt: 1 }}>
+              {/* BOM Header */}
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="h4" component="div" sx={{ mb: 2, fontWeight: 'bold' }}>
+                  {selectedBomForDetails.description}
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  <Chip
+                    label={selectedBomForDetails.status}
+                    color="primary"
+                    size="small"
+                  />
+                  <Chip
+                    label={selectedBomForDetails.stage}
+                    color="info"
+                    size="small"
+                  />
+                </Box>
+              </Box>
+
+              {/* BOM Information Grid */}
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Basic Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          BOM ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedBomForDetails.documentId}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          System ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedBomForDetails.id}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Description
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedBomForDetails.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Timeline & Ownership
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created By
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedBomForDetails.creator}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created Date
+                        </Typography>
+                        <Typography variant="body1">
+                          {new Date(selectedBomForDetails.createTime).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* Workflow Status & Progress */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Workflow Status & Progress
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {/* Status progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Status Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['IN_WORK', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'RELEASED'].map((status, index) => (
+                            <Box key={status} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={status.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedBomForDetails.status === status ? 'filled' : 'outlined'}
+                                color={selectedBomForDetails.status === status ? getStatusColor(status) : 'default'}
+                                sx={{
+                                  fontWeight: selectedBomForDetails.status === status ? 'bold' : 'normal',
+                                  boxShadow: selectedBomForDetails.status === status ? 2 : 0
+                                }}
+                              />
+                              {index < 4 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+
+                      {/* Stage progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Stage Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['CONCEPTUAL_DESIGN', 'PRELIMINARY_DESIGN', 'DETAILED_DESIGN', 'MANUFACTURING', 'IN_SERVICE'].map((stage, index) => (
+                            <Box key={stage} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={stage.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedBomForDetails.stage === stage ? 'filled' : 'outlined'}
+                                color={selectedBomForDetails.stage === stage ? getStageColor(stage) : 'default'}
+                                sx={{
+                                  fontWeight: selectedBomForDetails.stage === stage ? 'bold' : 'normal',
+                                  boxShadow: selectedBomForDetails.stage === stage ? 2 : 0
+                                }}
+                              />
+                              {index < 4 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* BOM Items */}
+                {selectedBomForDetails.items && selectedBomForDetails.items.length > 0 && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        BOM Items ({selectedBomForDetails.items.length})
+                      </Typography>
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Part Number</TableCell>
+                              <TableCell>Description</TableCell>
+                              <TableCell>Quantity</TableCell>
+                              <TableCell>Unit</TableCell>
+                              <TableCell>Reference</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {selectedBomForDetails.items.map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{item.partNumber}</TableCell>
+                                <TableCell>{item.description}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>{item.unit}</TableCell>
+                                <TableCell>{item.reference}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setBomDetailsDialogOpen(false);
+            setSelectedBomForDetails(null);
+          }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Document Details Dialog */}
+      <Dialog
+        open={documentDetailsDialogOpen}
+        onClose={() => {
+          setDocumentDetailsDialogOpen(false);
+          setSelectedDocumentForDetails(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center" gap={1}>
+              <DocumentIcon color="primary" />
+              <Typography variant="h5" component="div">
+                Document Details
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={() => {
+                setDocumentDetailsDialogOpen(false);
+                setSelectedDocumentForDetails(null);
+              }}
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedDocumentForDetails && (
+            <Box sx={{ pt: 1 }}>
+              {/* Document Header */}
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="h6" component="div" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  {selectedDocumentForDetails.title}
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Document Number: {selectedDocumentForDetails.master?.documentNumber || 'Not assigned'}
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  <Chip
+                    label={selectedDocumentForDetails.status}
+                    color="primary"
+                    size="small"
+                  />
+                  <Chip
+                    label={selectedDocumentForDetails.stage}
+                    color="info"
+                    size="small"
+                  />
+                  <Chip
+                    label={`v${selectedDocumentForDetails.revision}.${selectedDocumentForDetails.version || 0}`}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
+              </Box>
+
+              {/* Document Information Grid */}
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Basic Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Document ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedDocumentForDetails.id}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Master Document ID
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedDocumentForDetails.master?.id || 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          File Key
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                          {selectedDocumentForDetails.fileKey || 'Not specified'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Version & Timeline
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created By
+                        </Typography>
+                        <Typography variant="body1">
+                          {selectedDocumentForDetails.creator}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Created Date
+                        </Typography>
+                        <Typography variant="body1">
+                          {new Date(selectedDocumentForDetails.createTime).toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Current Version
+                        </Typography>
+                        <Typography variant="body1">
+                          Revision {selectedDocumentForDetails.revision || 0}, Version {selectedDocumentForDetails.version || 0}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* Workflow Status & Progress */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Workflow Status & Progress
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {/* Status progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Status Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['IN_WORK', 'IN_REVIEW', 'RELEASED', 'OBSOLETE'].map((status, index) => (
+                            <Box key={status} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={status.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedDocumentForDetails.status === status ? 'filled' : 'outlined'}
+                                color={selectedDocumentForDetails.status === status ? getStatusColor(status) : 'default'}
+                                sx={{
+                                  fontWeight: selectedDocumentForDetails.status === status ? 'bold' : 'normal',
+                                  boxShadow: selectedDocumentForDetails.status === status ? 2 : 0
+                                }}
+                              />
+                              {index < 3 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+
+                      {/* Stage progression visualization */}
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+                          Stage Progression
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {['CONCEPTUAL_DESIGN', 'PRELIMINARY_DESIGN', 'DETAILED_DESIGN', 'MANUFACTURING', 'IN_SERVICE'].map((stage, index) => (
+                            <Box key={stage} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Chip
+                                label={stage.replace(/_/g, ' ')}
+                                size="medium"
+                                variant={selectedDocumentForDetails.stage === stage ? 'filled' : 'outlined'}
+                                color={selectedDocumentForDetails.stage === stage ? getStageColor(stage) : 'default'}
+                                sx={{
+                                  fontWeight: selectedDocumentForDetails.stage === stage ? 'bold' : 'normal',
+                                  boxShadow: selectedDocumentForDetails.stage === stage ? 2 : 0
+                                }}
+                              />
+                              {index < 4 && (
+                                <ChevronRightIcon sx={{ mx: 0.5, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+
+                {/* File Information */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Attached File
+                    </Typography>
+                    {selectedDocumentForDetails.fileKey ? (
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <FileIcon color="primary" sx={{ fontSize: 40 }} />
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {selectedDocumentForDetails.fileKey.split('_').slice(1).join('_') || selectedDocumentForDetails.fileKey}
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              File Type: {selectedDocumentForDetails.fileKey.split('.').pop()?.toUpperCase() || 'Unknown'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Button
+                          variant="contained"
+                          startIcon={<CloudDownloadIcon />}
+                          onClick={() => handleDownloadDocument(selectedDocumentForDetails)}
+                          color="primary"
+                        >
+                          Download File
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 3 }}>
+                        <FileIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                        <Typography variant="body1" color="textSecondary">
+                          No file attached to this document
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                </Grid>
+
+                {/* Description */}
+                {selectedDocumentForDetails.description && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Description
+                      </Typography>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedDocumentForDetails.description}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {selectedDocumentForDetails?.fileKey && (
+            <Button
+              variant="outlined"
+              startIcon={<CloudDownloadIcon />}
+              onClick={() => handleDownloadDocument(selectedDocumentForDetails)}
+            >
+              Download File
+            </Button>
+          )}
+          <Button onClick={() => {
+            setDocumentDetailsDialogOpen(false);
+            setSelectedDocumentForDetails(null);
+          }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

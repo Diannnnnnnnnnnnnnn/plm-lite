@@ -18,7 +18,7 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.4</spring-cloud.version>
-        <camunda.version>8.5.0</camunda.version>
+        <zeebe.version>8.5.11</zeebe.version>
     </properties>
 
     <dependencies>
@@ -51,20 +51,12 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Camunda Zeebe - commented out for simplified dev mode -->
-        <!--
+        <!-- Camunda Zeebe Client -->
         <dependency>
             <groupId>io.camunda</groupId>
             <artifactId>zeebe-client-java</artifactId>
-            <version>${camunda.version}</version>
+            <version>8.5.11</version>
         </dependency>
-
-        <dependency>
-            <groupId>io.camunda.spring</groupId>
-            <artifactId>spring-boot-starter-camunda</artifactId>
-            <version>8.5.5</version>
-        </dependency>
-        -->
 
         <!-- Spring Cloud -->
         <dependency>

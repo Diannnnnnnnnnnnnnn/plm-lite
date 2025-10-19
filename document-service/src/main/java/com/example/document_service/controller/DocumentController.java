@@ -110,6 +110,14 @@ public class DocumentController {
         return DocumentMapper.toResponse(d);
     }
 
+    @PostMapping("/{id}/initiate-change-edit")
+    public DocumentResponse initiateChangeBasedEdit(@PathVariable String id,
+                                                    @RequestParam String changeId,
+                                                    @RequestParam String user) {
+        Document d = documentService.initiateChangeBasedEdit(id, changeId, user);
+        return DocumentMapper.toResponse(d);
+    }
+
     @PostMapping("/{id}/stage")
     public DocumentResponse updateStage(@PathVariable String id,
                                         @RequestBody UpdateStageRequest req) {
@@ -135,6 +143,14 @@ public class DocumentController {
         List<DocumentHistory> list = documentService.history(id);
         return list.stream()
                    .map(DocumentHistoryMapper::toResponse)
+                   .collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}/versions")
+    public List<DocumentResponse> getDocumentVersions(@PathVariable String id) {
+        List<Document> versions = documentService.getDocumentVersions(id);
+        return versions.stream()
+                   .map(DocumentMapper::toResponse)
                    .collect(Collectors.toList());
     }
 

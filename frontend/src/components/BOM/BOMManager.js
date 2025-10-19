@@ -603,7 +603,9 @@ export default function BOMManager() {
               <Card sx={{ mb: 2 }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h5">{selectedNode.id}</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                      {selectedNode.description}
+                    </Typography>
                     <Box display="flex" gap={1}>
                       <IconButton
                         size="small"
@@ -628,24 +630,16 @@ export default function BOMManager() {
                     </Box>
                   </Box>
 
-                  <Typography variant="h6" color="textSecondary" gutterBottom>
-                    {selectedNode.description}
-                  </Typography>
-
                   <Grid container spacing={2} sx={{ mb: 2 }}>
-                    <Grid item xs={6} sm={3}>
+                    <Grid item xs={6} sm={4}>
                       <Typography variant="body2" color="textSecondary">BOM ID</Typography>
-                      <Typography variant="body1">{selectedNode.id}</Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="body2" color="textSecondary">Document ID</Typography>
                       <Typography variant="body1">{selectedNode.documentId}</Typography>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
+                    <Grid item xs={6} sm={4}>
                       <Typography variant="body2" color="textSecondary">Stage</Typography>
                       <Typography variant="body1">{selectedNode.stage}</Typography>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
+                    <Grid item xs={6} sm={4}>
                       <Typography variant="body2" color="textSecondary">Created</Typography>
                       <Typography variant="body1">
                         {new Date(selectedNode.createTime).toLocaleDateString()}
@@ -914,7 +908,7 @@ export default function BOMManager() {
             )}
             <TextField
               fullWidth
-              label="Document ID"
+              label="BOM ID"
               variant="outlined"
               value={newBOM.documentId}
               onChange={(e) => setNewBOM({...newBOM, documentId: e.target.value})}

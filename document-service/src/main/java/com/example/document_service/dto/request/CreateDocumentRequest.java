@@ -5,6 +5,7 @@ import com.example.plm.common.model.Stage;
 public class CreateDocumentRequest {
     private String masterId;
     private String title;
+    private String description;
     private String creator;
     private String category;
     private Stage stage;
@@ -27,6 +28,14 @@ public class CreateDocumentRequest {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getCreator() {
@@ -66,6 +75,7 @@ public class CreateDocumentRequest {
         return "CreateDocumentRequest{" +
                 "masterId='" + masterId + '\'' +
                 ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
                 ", creator='" + creator + '\'' +
                 ", category='" + category + '\'' +
                 ", stage=" + stage +

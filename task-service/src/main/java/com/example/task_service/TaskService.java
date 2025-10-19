@@ -101,7 +101,11 @@ public class TaskService {
 
     public Task addTask(Task task) {
         return addTask(task, List.of()); // delegate to the main method with an empty file list
-    }    
+    }
+
+    public List<Task> getTasksByAssignedTo(String assignedTo) {
+        return taskRepository.findByAssignedTo(assignedTo);
+    }
  
 }
 

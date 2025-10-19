@@ -10,6 +10,21 @@ spring:
 server:
   port: 8086
 
+# Camunda Zeebe Configuration (applies to all profiles)
+zeebe:
+  client:
+    broker:
+      gateway-address: localhost:26500
+    security:
+      plaintext: true
+    worker:
+      max-jobs-active: 32
+      threads: 3
+    message:
+      time-to-live: 3600000
+    job:
+      timeout: 30000
+
 ---
 spring:
   config:
@@ -52,17 +67,8 @@ spring:
       ddl-auto: validate
     show-sql: false
 
-zeebe:
-  client:
-    broker:
-      gateway-address: ${ZEEBE_GATEWAY_ADDRESS:localhost:26500}
-    security:
-      plaintext: true
-  worker:
-    max-jobs-active: 32
-    request-timeout: 10000
-
 logging:
   level:
     com.example.plm.workflow: DEBUG
     io.camunda.zeebe: INFO
+    io.camunda: DEBUG
