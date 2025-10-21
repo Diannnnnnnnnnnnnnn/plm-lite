@@ -75,6 +75,16 @@ public class DocumentWorkflowWorkers {
                 .open();
         System.out.println("   ✓ Registered: notify-completion");
 
+        // Register wait-for-review worker
+        zeebeClient.newWorker()
+                .jobType("wait-for-review")
+                .handler(this::handleWaitForReview)
+                .name("wait-for-review-worker")
+                .maxJobsActive(100)
+                .timeout(Duration.ofHours(24)) // 24 hour timeout for review
+                .open();
+        System.out.println("   ✓ Registered: wait-for-review");
+
         System.out.println("✅ All job workers registered successfully!\n");
     }
 
@@ -94,6 +104,8 @@ public class DocumentWorkflowWorkers {
         System.out.println("📋 Creating approval tasks for document: " + documentId);
         System.out.println("   Reviewers: " + reviewerIds);
 
+        Long lastCreatedTaskId = null; // Track last created task ID for job key linking
+        
         try {
             // Create a task for each reviewer
             for (String reviewerId : reviewerIds) {
@@ -121,8 +133,10 @@ public class DocumentWorkflowWorkers {
                     TaskServiceClient.TaskDTO response = taskServiceClient.createTask(
                         taskName,
                         taskDescription,
-                        userId
+                        userId,
+                        username // assignedTo
                     );
+                    lastCreatedTaskId = response.getId(); // Store for job key linking
                     System.out.println("   ✓ Created task ID " + response.getId() + " for " + username);
                     
                 } catch (Exception e) {
@@ -131,10 +145,11 @@ public class DocumentWorkflowWorkers {
                 }
             }
 
-            // Complete the job
+            // Complete the job and pass task ID to next step
             Map<String, Object> result = new HashMap<>();
             result.put("tasksCreated", true);
             result.put("taskCount", reviewerIds.size());
+            result.put("taskId", lastCreatedTaskId); // Pass to wait-for-review step
             
             client.newCompleteCommand(job.getKey())
                     .variables(result)
@@ -162,6 +177,7 @@ public class DocumentWorkflowWorkers {
         Map<String, Object> variables = job.getVariablesAsMap();
         String documentId = (String) variables.get("documentId");
         String newStatus = (String) variables.get("newStatus");
+        String creator = (String) variables.get("creator");
         
         System.out.println("🔄 Updating document status: " + documentId + " -> " + newStatus);
 
@@ -169,6 +185,7 @@ public class DocumentWorkflowWorkers {
             // Update document status via document-service
             DocumentStatusUpdateRequest request = new DocumentStatusUpdateRequest();
             request.setStatus(newStatus);
+            request.setUser(creator != null ? creator : "system");
             
             documentServiceClient.updateDocumentStatus(documentId, request);
             
@@ -194,6 +211,44 @@ public class DocumentWorkflowWorkers {
                     .errorMessage("Failed to update document status: " + e.getMessage())
                     .send();
         }
+    }
+
+    /**
+     * Worker for "Wait For Review" service task
+     * This worker waits to be completed by an external API call when review is done
+     */
+    private void handleWaitForReview(JobClient client, ActivatedJob job) {
+        Map<String, Object> variables = job.getVariablesAsMap();
+        String documentId = (String) variables.get("documentId");
+        Long jobKey = job.getKey();
+        Object taskIdObj = variables.get("taskId");
+        
+        System.out.println("⏳ Waiting for review completion for document: " + documentId);
+        System.out.println("   Job Key: " + jobKey);
+        System.out.println("   Process Instance: " + job.getProcessInstanceKey());
+        
+        // ✅ AUTOMATIC SYNC: Link this job key with the task
+        if (taskIdObj != null) {
+            try {
+                Long taskId = Long.valueOf(taskIdObj.toString());
+                // Create task DTO with the job key
+                TaskServiceClient.TaskDTO taskUpdate = new TaskServiceClient.TaskDTO();
+                taskUpdate.setWorkflowJobKey(jobKey);
+                // Update task with workflow job key
+                taskServiceClient.updateTaskWithJobKey(taskId, taskUpdate);
+                System.out.println("   ✅ Linked task ID " + taskId + " with job key " + jobKey);
+                System.out.println("   ℹ️  Task will auto-complete workflow when marked as COMPLETED in UI!");
+            } catch (Exception e) {
+                System.err.println("   ⚠️ Failed to link job key with task: " + e.getMessage());
+                System.out.println("   ℹ️  Fallback: Call POST /api/workflows/tasks/{jobKey}/complete manually");
+            }
+        } else {
+            System.out.println("   ℹ️  No task ID found, call POST /api/workflows/tasks/{jobKey}/complete manually");
+        }
+        
+        // Note: This job will remain active until completed via API call
+        // or until it times out (24 hours)
+        // DO NOT complete it here - wait for external API call
     }
 
     /**

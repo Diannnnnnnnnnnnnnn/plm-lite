@@ -55,18 +55,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Camunda Zeebe Client -->
-		<dependency>
-			<groupId>io.camunda</groupId>
-			<artifactId>zeebe-client-java</artifactId>
-			<version>${camunda.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>io.camunda</groupId>
-			<artifactId>spring-zeebe-starter</artifactId>
-			<version>8.5.5</version>
-		</dependency>
+        <!-- Camunda Zeebe Client - removed, task-service no longer connects to Zeebe directly -->
 
 		<!-- Spring Cloud -->
 		<dependency>

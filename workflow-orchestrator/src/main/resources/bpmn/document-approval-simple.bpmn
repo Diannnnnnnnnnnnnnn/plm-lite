@@ -29,14 +29,15 @@
       <bpmn:outgoing>Flow_ToReviewTask</bpmn:outgoing>
     </bpmn:serviceTask>
     
-    <!-- SERVICE TASK: WAIT FOR REVIEW -->
-    <bpmn:serviceTask id="ServiceTask_WaitForReview" name="Wait For&#10;Review">
+    <!-- USER TASK: REVIEW DOCUMENT -->
+    <bpmn:userTask id="UserTask_ReviewDocument" name="Review&#10;Document">
       <bpmn:extensionElements>
-        <zeebe:taskDefinition type="wait-for-review" />
+        <zeebe:assignmentDefinition assignee="=${reviewerId}" />
+        <zeebe:formDefinition formKey="review-document-form" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_ToReviewTask</bpmn:incoming>
       <bpmn:outgoing>Flow_ToDecision</bpmn:outgoing>
-    </bpmn:serviceTask>
+    </bpmn:userTask>
     
     <!-- EXCLUSIVE GATEWAY: APPROVE OR REJECT -->
     <bpmn:exclusiveGateway id="Gateway_Decision" name="Approved?" default="Flow_Approved">
@@ -46,11 +47,11 @@
     </bpmn:exclusiveGateway>
     
     <!-- APPROVED PATH -->
-    <bpmn:serviceTask id="ServiceTask_UpdateApproved" name="Update Status:&#10;RELEASED">
+    <bpmn:serviceTask id="ServiceTask_UpdateApproved" name="Update Status:&#10;APPROVED">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="update-status" />
         <zeebe:ioMapping>
-          <zeebe:input source="=&#34;RELEASED&#34;" target="newStatus" />
+          <zeebe:input source="=&#34;APPROVED&#34;" target="newStatus" />
         </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
@@ -66,11 +67,11 @@
     </bpmn:serviceTask>
     
     <!-- REJECTED PATH -->
-    <bpmn:serviceTask id="ServiceTask_UpdateRejected" name="Update Status:&#10;IN_WORK">
+    <bpmn:serviceTask id="ServiceTask_UpdateRejected" name="Update Status:&#10;REJECTED">
       <bpmn:extensionElements>
         <zeebe:taskDefinition type="update-status" />
         <zeebe:ioMapping>
-          <zeebe:input source="=&#34;IN_WORK&#34;" target="newStatus" />
+          <zeebe:input source="=&#34;REJECTED&#34;" target="newStatus" />
         </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Rejected</bpmn:incoming>
@@ -99,8 +100,8 @@
     
     <!-- SEQUENCE FLOWS -->
     <bpmn:sequenceFlow id="Flow_ToCreateTasks" sourceRef="StartEvent_DocumentSubmitted" targetRef="ServiceTask_CreateApprovalTasks" />
-    <bpmn:sequenceFlow id="Flow_ToReviewTask" sourceRef="ServiceTask_CreateApprovalTasks" targetRef="ServiceTask_WaitForReview" />
-    <bpmn:sequenceFlow id="Flow_ToDecision" sourceRef="ServiceTask_WaitForReview" targetRef="Gateway_Decision" />
+    <bpmn:sequenceFlow id="Flow_ToReviewTask" sourceRef="ServiceTask_CreateApprovalTasks" targetRef="UserTask_ReviewDocument" />
+    <bpmn:sequenceFlow id="Flow_ToDecision" sourceRef="UserTask_ReviewDocument" targetRef="Gateway_Decision" />
     
     <bpmn:sequenceFlow id="Flow_Approved" name="Yes" sourceRef="Gateway_Decision" targetRef="ServiceTask_UpdateApproved" />
     <bpmn:sequenceFlow id="Flow_Rejected" name="No" sourceRef="Gateway_Decision" targetRef="ServiceTask_UpdateRejected">
@@ -134,8 +135,8 @@
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       
-      <!-- Service Task: Wait For Review -->
-      <bpmndi:BPMNShape id="Shape_WaitForReview" bpmnElement="ServiceTask_WaitForReview">
+      <!-- User Task -->
+      <bpmndi:BPMNShape id="Shape_ReviewTask" bpmnElement="UserTask_ReviewDocument">
         <dc:Bounds x="390" y="170" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>

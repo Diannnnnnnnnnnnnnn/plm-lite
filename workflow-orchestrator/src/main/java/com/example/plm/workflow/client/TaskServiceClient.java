@@ -1,7 +1,10 @@
 package com.example.plm.workflow.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
@@ -15,7 +18,14 @@ public interface TaskServiceClient {
     TaskDTO createTask(
         @RequestParam("name") String name,
         @RequestParam("description") String description,
-        @RequestParam("userId") Long userId
+        @RequestParam("userId") Long userId,
+        @RequestParam(value = "assignedTo", required = false) String assignedTo
+    );
+    
+    @PutMapping("/tasks/{id}")
+    TaskDTO updateTaskWithJobKey(
+        @PathVariable("id") Long id,
+        @RequestBody TaskDTO task
     );
     
     /**
@@ -26,6 +36,7 @@ public interface TaskServiceClient {
         private String name;
         private String description;
         private Long userId;
+        private Long workflowJobKey;
         
         public TaskDTO() {}
         
@@ -37,6 +48,8 @@ public interface TaskServiceClient {
         public void setDescription(String description) { this.description = description; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public Long getWorkflowJobKey() { return workflowJobKey; }
+        public void setWorkflowJobKey(Long workflowJobKey) { this.workflowJobKey = workflowJobKey; }
     }
 }
 

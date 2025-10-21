@@ -55,6 +55,11 @@ public class WorkflowService {
             variables.put("creator", creator);
             variables.put("reviewerIds", reviewerIds);
             variables.put("approved", false); // Will be set by user task completion
+            
+            // Extract first reviewer for user task assignment
+            if (reviewerIds != null && !reviewerIds.isEmpty()) {
+                variables.put("reviewerId", reviewerIds.get(0));
+            }
 
             // Start the workflow process
             ProcessInstanceEvent processInstance = zeebeClient.newCreateInstanceCommand()
@@ -150,7 +155,12 @@ public class WorkflowService {
                 String taskName = "Review Document: " + masterId + " " + version + " [" + documentId + "]";
                 String taskDescription = "Please review document '" + masterId + "' version " + version + " submitted by " + creator + ". Document ID: " + documentId;
 
-                TaskServiceClient.TaskDTO response = taskServiceClient.createTask(taskName, taskDescription, userId);
+                TaskServiceClient.TaskDTO response = taskServiceClient.createTask(
+                        taskName,
+                        taskDescription,
+                        userId,
+                        username // assignedTo
+                );
                 System.out.println("Created task for reviewer ID " + userId + " (username: " + username + "): " + response.getId());
             } catch (Exception e) {
                 System.err.println("Failed to create task for reviewer " + reviewerId + ": " + e.getMessage());

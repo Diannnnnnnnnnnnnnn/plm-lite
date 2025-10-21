@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,39 +40,66 @@ public class TaskService {
     private TaskMessageProducer taskMessageProducer;
 
     public Task addTask(Task task, List<MultipartFile> files) {
-        // Validate if user exists in user-service
-        User user = userClient.getUserById(task.getUserId());
-        if (user == null) {
-            throw new RuntimeException("User not found with ID: " + task.getUserId());
+        // Prefer assignedTo if provided (from orchestrator); otherwise, try to resolve via user-service
+        if (task.getAssignedTo() == null || task.getAssignedTo().isBlank()) {
+            try {
+                User user = userClient.getUserById(task.getUserId());
+                if (user == null) {
+                    System.err.println("⚠ Warning: User not found with ID: " + task.getUserId() + ", but continuing task creation");
+                } else {
+                    // Set assignedTo field with username for query compatibility
+                    task.setAssignedTo(user.getUsername());
+                    System.out.println("✓ Assigned task to user: " + user.getUsername() + " (ID: " + task.getUserId() + ")");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠ Warning: Failed to validate user ID " + task.getUserId() + ": " + e.getMessage());
+                System.err.println("   Continuing with task creation anyway...");
+            }
         }
 
         // First save to DB to generate ID
         Task savedTask = taskRepository.save(task);
 
-        // After saving task and before returning
-        taskMessageProducer.sendTaskCreatedMessage(String.valueOf(savedTask.getId()));
+        // After saving task and before returning (fault-tolerant)
+        try {
+            taskMessageProducer.sendTaskCreatedMessage(String.valueOf(savedTask.getId()));
+        } catch (Exception e) {
+            System.err.println("⚠ Warning: Failed to send RabbitMQ message for task " + savedTask.getId() + ": " + e.getMessage());
+        }
         
         // Upload and associate files if provided
         if (files != null && !files.isEmpty()) {
             for (MultipartFile file : files) {
-                String fileUrl = fileStorageClient.uploadFile(file);
-                FileMetadata metadata = new FileMetadata();
-                metadata.setFilename(file.getOriginalFilename());
-                metadata.setFileUrl(fileUrl);
-                metadata.setTask(savedTask);
-                fileMetadataRepository.save(metadata);
+                try {
+                    String fileUrl = fileStorageClient.uploadFile(file);
+                    FileMetadata metadata = new FileMetadata();
+                    metadata.setFilename(file.getOriginalFilename());
+                    metadata.setFileUrl(fileUrl);
+                    metadata.setTask(savedTask);
+                    fileMetadataRepository.save(metadata);
+                } catch (Exception e) {
+                    System.err.println("⚠ Warning: Failed to upload file " + file.getOriginalFilename() + ": " + e.getMessage());
+                }
             }
         }
         // Sync with Elasticsearch (if available)
         if (taskSearchRepository != null) {
-            taskSearchRepository.save(new TaskDocument(
-                savedTask.getId(), savedTask.getName(), savedTask.getDescription(), savedTask.getUserId()
-            ));
+            try {
+                taskSearchRepository.save(new TaskDocument(
+                    savedTask.getId(), savedTask.getName(), savedTask.getDescription(), savedTask.getUserId()
+                ));
+            } catch (Exception e) {
+                System.err.println("⚠ Warning: Failed to index task in Elasticsearch: " + e.getMessage());
+            }
         }
 
-        // Send to graph service
-        graphClient.createTask(String.valueOf(savedTask.getId()), savedTask.getName());
-        graphClient.assignTask(String.valueOf(savedTask.getUserId()), String.valueOf(savedTask.getId()));
+        // Send to graph service (fault-tolerant)
+        try {
+            graphClient.createTask(String.valueOf(savedTask.getId()), savedTask.getName());
+            graphClient.assignTask(String.valueOf(savedTask.getUserId()), String.valueOf(savedTask.getId()));
+        } catch (Exception e) {
+            System.err.println("⚠ Warning: Failed to sync task with graph service: " + e.getMessage());
+        }
 
         return savedTask;
     }
@@ -87,12 +113,24 @@ public class TaskService {
     }     
 
     public Task updateTask(Long id, Task task) {
-        if (taskRepository.existsById(id)) {
-            task.setId(id);
-            return taskRepository.save(task);
-        } else {
+        Optional<Task> existingOpt = taskRepository.findById(id);
+        if (existingOpt.isEmpty()) {
             return null; // Handle non-existent ID scenario
         }
+
+        Task existing = existingOpt.get();
+
+        if (task.getName() != null) existing.setName(task.getName());
+        if (task.getDescription() != null) existing.setDescription(task.getDescription());
+        if (task.getUserId() != null) existing.setUserId(task.getUserId());
+        if (task.getAssignedTo() != null && !task.getAssignedTo().isBlank()) existing.setAssignedTo(task.getAssignedTo());
+        if (task.getTaskStatus() != null) existing.setTaskStatus(task.getTaskStatus());
+        if (task.getDueDate() != null) existing.setDueDate(task.getDueDate());
+        if (task.getWorkflowJobKey() != null) existing.setWorkflowJobKey(task.getWorkflowJobKey());
+
+        // createdAt is immutable once set
+
+        return taskRepository.save(existing);
     }
 
     public void deleteTask(Long id) {

@@ -31,6 +31,7 @@ public class Task implements Serializable { // Implement Serializable interface
     private String taskStatus; // Task status: TODO, IN_PROGRESS, COMPLETED
     private java.time.LocalDateTime createdAt; // Task creation timestamp
     private java.time.LocalDateTime dueDate; // Task due date
+    private Long workflowJobKey; // Zeebe workflow job key for automatic sync
 
     //code for the relation of task and file
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
@@ -121,5 +122,13 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setFiles(List<FileMetadata> files) {
         this.files = files;
+    }
+
+    public Long getWorkflowJobKey() {
+        return workflowJobKey;
+    }
+
+    public void setWorkflowJobKey(Long workflowJobKey) {
+        this.workflowJobKey = workflowJobKey;
     }
 }

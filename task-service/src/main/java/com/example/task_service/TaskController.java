@@ -1,5 +1,6 @@
 package com.example.task_service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import io.camunda.zeebe.client.ZeebeClient;
+import com.example.task_service.client.WorkflowOrchestratorClient;
+
 
 
 @RestController
@@ -28,8 +30,10 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
 
+    // Zeebe client removed - task-service no longer starts processes directly
+
     @Autowired
-    private ZeebeClient zeebeClient;
+    private WorkflowOrchestratorClient workflowClient;
 
     @GetMapping
     public List<Task> getAllTasks(@RequestParam(required = false) String assignedTo) {
@@ -70,9 +74,31 @@ public class TaskController {
 
         Task task = optionalTask.get();
         String newStatus = statusUpdate.get("status");
+        String approved = statusUpdate.get("approved"); // "true" or "false"
+        String comments = statusUpdate.get("comments");
+        
         if (newStatus != null) {
             task.setTaskStatus(newStatus);
             Task updatedTask = taskService.updateTask(id, task);
+            
+            // ✅ AUTOMATIC WORKFLOW SYNC: If task is completed and has a workflow job key, complete the workflow!
+            if ("COMPLETED".equalsIgnoreCase(newStatus) && updatedTask.getWorkflowJobKey() != null) {
+                System.out.println("🔄 Auto-completing workflow job: " + updatedTask.getWorkflowJobKey());
+                try {
+                    Map<String, Object> workflowVariables = new HashMap<>();
+                    // Default to approved if not explicitly rejected
+                    workflowVariables.put("approved", !"false".equalsIgnoreCase(approved) && !"rejected".equalsIgnoreCase(approved));
+                    workflowVariables.put("comments", comments != null ? comments : "Task completed");
+                    
+                    workflowClient.completeWorkflowJob(updatedTask.getWorkflowJobKey(), workflowVariables);
+                    System.out.println("   ✅ Workflow job completed successfully!");
+                } catch (Exception e) {
+                    System.err.println("   ⚠️ Failed to complete workflow job: " + e.getMessage());
+                    System.err.println("   Task status updated, but workflow may need manual completion.");
+                    // Don't fail the task update if workflow completion fails
+                }
+            }
+            
             return ResponseEntity.ok(updatedTask);
         }
 
@@ -84,12 +110,18 @@ public class TaskController {
             @RequestParam String name,
             @RequestParam String description,
             @RequestParam Long userId,
+            @RequestParam(value = "assignedTo", required = false) String assignedTo,
+            @RequestParam(value = "jobKey", required = false) Long jobKey,
             @RequestParam(value = "files", required = false) MultipartFile[] files
     ) {
         Task task = new Task();
         task.setName(name);
         task.setDescription(description);
         task.setUserId(userId);
+        if (assignedTo != null && !assignedTo.isBlank()) {
+            task.setAssignedTo(assignedTo);
+        }
+        task.setWorkflowJobKey(jobKey); // Store the workflow job key for automatic sync
 
         List<MultipartFile> fileList = (files != null) ? List.of(files) : null;
 
@@ -112,21 +144,9 @@ public class TaskController {
 
         Task task = optionalTask.get();
 
-        Map<String, Object> variables = Map.of(
-                "taskId", task.getId(),
-                "name", task.getName(),
-                "description", task.getDescription(),
-                "userId", task.getUserId()
-        );
-
-        zeebeClient.newCreateInstanceCommand()
-                .bpmnProcessId(processKey)
-                .latestVersion()
-                .variables(variables)
-                .send()
-                .join();
-
-        return ResponseEntity.ok("Process started for task ID: " + task.getId());
+        // Legacy Zeebe start removed; respond with guidance
+        return ResponseEntity.status(410)
+                .body("Deprecated: start workflows via workflow-orchestrator API.");
     }
 
 
