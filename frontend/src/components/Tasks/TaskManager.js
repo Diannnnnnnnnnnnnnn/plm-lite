@@ -190,12 +190,51 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange, onClick, onDragStart
           {task.description}
         </Typography>
 
+        {/* NEW: Two-Stage Review Indicators */}
+        {(task.reviewStage || task.initialReviewer || task.technicalReviewer) && (
+          <Box mb={2}>
+            {/* Review Stage Badge */}
+            {task.reviewStage && (
+              <Chip 
+                label={task.reviewStage === 'INITIAL_REVIEW' ? '1️⃣ Initial Review' : '2️⃣ Technical Review'}
+                color={task.reviewStage === 'INITIAL_REVIEW' ? 'primary' : 'secondary'}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+            )}
+            
+            {/* Review Path */}
+            {(task.initialReviewer && task.technicalReviewer) && (
+              <Box display="flex" alignItems="center" gap={1} mt={1}>
+                <Typography variant="caption" color="textSecondary">
+                  Review Path:
+                </Typography>
+                <Chip 
+                  label={task.initialReviewer}
+                  size="small"
+                  variant={task.reviewStage === 'INITIAL_REVIEW' ? 'filled' : 'outlined'}
+                  color="primary"
+                />
+                <Typography variant="caption">→</Typography>
+                <Chip 
+                  label={task.technicalReviewer}
+                  size="small"
+                  variant={task.reviewStage === 'TECHNICAL_REVIEW' ? 'filled' : 'outlined'}
+                  color="secondary"
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Box display="flex" alignItems="center" gap={1}>
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-              U
+              {task.assignedTo ? task.assignedTo.charAt(0).toUpperCase() : 'U'}
             </Avatar>
-            <Typography variant="body2">User ID: {task.userId}</Typography>
+            <Typography variant="body2">
+              {task.assignedTo || `User ID: ${task.userId}`}
+            </Typography>
           </Box>
         </Box>
 
@@ -531,8 +570,8 @@ export default function TaskManager() {
 
         await changeService.approveChange(changeId);
 
-        // Mark task as completed
-        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+        // Mark task as completed with approval flag for workflow integration
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', true, 'Approved');
 
         alert('Change approved successfully!');
         setTaskDetailsOpen(false);
@@ -544,19 +583,11 @@ export default function TaskManager() {
           setTasks(response);
         }
       } else {
-        // Handle document approval
-        const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
-        if (!documentId) {
-          alert('Cannot find document ID in task');
-          return;
-        }
+        // Handle document approval (workflow-managed)
+        // For workflow reviews, ONLY update task status - let workflow handle document status!
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', true, 'Approved');
 
-        await documentService.completeReview(documentId, true, 'Current User', 'Approved');
-
-        // Mark task as completed
-        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
-
-        alert('Document approved successfully! Status changed to RELEASED.');
+        alert('Document review approved! Workflow will update document status automatically.');
         setTaskDetailsOpen(false);
 
         // Refresh tasks for current user only
@@ -576,8 +607,8 @@ export default function TaskManager() {
     try {
       // Check if this is a change review task or document review task
       if (isChangeReviewTask(selectedTaskForDetails)) {
-        // For changes, we don't have a reject API yet, so just mark task as completed
-        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
+        // For changes, we don't have a reject API yet, so just mark task as completed with rejection flag
+        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', false, 'Rejected');
         alert('Change review task marked as completed (rejection not yet implemented)');
         setTaskDetailsOpen(false);
 
@@ -590,18 +621,11 @@ export default function TaskManager() {
         return;
       }
 
-      const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
-      if (!documentId) {
-        alert('Cannot find document ID in task');
-        return;
-      }
+      // Handle document rejection (workflow-managed)
+      // For workflow reviews, ONLY update task status - let workflow handle document status!
+      await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', false, 'Declined');
 
-      await documentService.completeReview(documentId, false, 'Current User', 'Declined');
-
-      // Mark task as completed even when declined
-      await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED');
-
-      alert('Document declined. Status remains IN_WORK.');
+      alert('Document review declined! Workflow will update document status automatically.');
       setTaskDetailsOpen(false);
 
       // Refresh tasks for current user only

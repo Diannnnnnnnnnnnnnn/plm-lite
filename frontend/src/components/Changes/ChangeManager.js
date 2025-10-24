@@ -585,6 +585,32 @@ export default function ChangeManager() {
   const handleCreateChange = async () => {
     try {
       setLoading(true);
+      
+      // Validate required fields
+      if (!newChange.title || !newChange.title.trim()) {
+        setError('Change title is required');
+        setLoading(false);
+        return;
+      }
+      
+      if (!newChange.product || !newChange.product.trim()) {
+        setError('Product/Part selection is required');
+        setLoading(false);
+        return;
+      }
+      
+      if (!newChange.changeDocument || !newChange.changeDocument.trim()) {
+        setError('Change document selection is required');
+        setLoading(false);
+        return;
+      }
+      
+      if (!newChange.changeReason || !newChange.changeReason.trim()) {
+        setError('Change reason is required');
+        setLoading(false);
+        return;
+      }
+      
       const currentUser = getCurrentUsername();
       const changeData = {
         title: newChange.title,
@@ -612,6 +638,7 @@ export default function ChangeManager() {
         selectedProductInfo: null
       });
       setExpandedBOMs(new Set());
+      setError(''); // Clear any error messages
     } catch (error) {
       console.error('Error creating change:', error);
       setError('Failed to create change: ' + (error.response?.data?.message || error.message));
@@ -904,6 +931,7 @@ export default function ChangeManager() {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
+                  required
                   label="Change Title"
                   variant="outlined"
                   value={newChange.title}
@@ -913,6 +941,7 @@ export default function ChangeManager() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
+                required
                 label="Product/Part (from BOM)"
                 variant="outlined"
                 value={newChange.selectedProductInfo ?
@@ -977,6 +1006,7 @@ export default function ChangeManager() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
+                required
                 label="Change Document"
                 variant="outlined"
                 value={newChange.selectedDocumentInfo ? `${newChange.selectedDocumentInfo.title} (${newChange.selectedDocumentInfo.id})` : ''}
@@ -1009,6 +1039,7 @@ export default function ChangeManager() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                required
                 label="Change Reason"
                 variant="outlined"
                 multiline

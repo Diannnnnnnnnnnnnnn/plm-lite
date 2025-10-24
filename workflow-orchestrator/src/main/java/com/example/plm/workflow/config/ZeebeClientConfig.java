@@ -87,6 +87,17 @@ public class ZeebeClientConfig {
                 System.err.println("   ⚠️  Warning: Could not deploy document-approval.bpmn: " + e.getMessage());
             }
 
+            // Deploy document-approval-with-review.bpmn (two-stage review)
+            try {
+                client.newDeployResourceCommand()
+                        .addResourceFromClasspath("bpmn/document-approval-with-review.bpmn")
+                        .send()
+                        .join();
+                System.out.println("   ✓ Deployed: document-approval-with-review.bpmn");
+            } catch (Exception e) {
+                System.err.println("   ⚠️  Warning: Could not deploy document-approval-with-review.bpmn: " + e.getMessage());
+            }
+
             // Deploy change-approval.bpmn
             try {
                 client.newDeployResourceCommand()

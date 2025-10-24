@@ -228,8 +228,14 @@ public class DocumentServiceImpl implements DocumentService {
         if (req.getUser() == null || req.getUser().trim().isEmpty()) {
             throw new ValidationException("User is required");
         }
-        if (req.getReviewerIds() == null || req.getReviewerIds().isEmpty()) {
-            throw new ValidationException("At least one reviewer is required");
+        // Accept either legacy single-stage reviewers OR new two-stage reviewers
+        boolean hasLegacyReviewers = req.getReviewerIds() != null && !req.getReviewerIds().isEmpty();
+        boolean hasTwoStageReviewers = Boolean.TRUE.equals(req.getTwoStageReview())
+                && req.getInitialReviewer() != null && !req.getInitialReviewer().trim().isEmpty()
+                && req.getTechnicalReviewer() != null && !req.getTechnicalReviewer().trim().isEmpty();
+
+        if (!hasLegacyReviewers && !hasTwoStageReviewers) {
+            throw new ValidationException("At least one reviewer is required (either reviewerIds or two-stage reviewers)");
         }
     }
 
@@ -254,20 +260,44 @@ public class DocumentServiceImpl implements DocumentService {
         d = docRepo.save(d);
 
         String newStatus = d.getStatus().name();
-        logHistory(d, "SUBMIT_REVIEW", oldStatus, newStatus, req.getUser(),
-                "Reviewers=" + String.join(",", req.getReviewerIds()));
+        
+        // Determine log message based on review type
+        String reviewInfo;
+        if (Boolean.TRUE.equals(req.getTwoStageReview())) {
+            reviewInfo = "Two-Stage Review: Initial=" + req.getInitialReviewer() + ", Technical=" + req.getTechnicalReviewer();
+        } else {
+            reviewInfo = "Reviewers=" + String.join(",", req.getReviewerIds());
+        }
+        logHistory(d, "SUBMIT_REVIEW", oldStatus, newStatus, req.getUser(), reviewInfo);
 
         sync(d);
 
         try {
-            workflowGateway.startReviewProcess(
-                    d.getId(),
-                    d.getMaster() != null ? d.getMaster().getId() : null,
-                    d.getFullVersion(),
-                    d.getCreator(),
-                    req.getReviewerIds()
-            );
-            System.out.println("INFO: Successfully started review workflow for document: " + d.getId());
+            // NEW: Check if two-stage review or legacy review
+            if (Boolean.TRUE.equals(req.getTwoStageReview()) && 
+                req.getInitialReviewer() != null && 
+                req.getTechnicalReviewer() != null) {
+                // Two-stage review workflow
+                workflowGateway.startTwoStageReviewProcess(
+                        d.getId(),
+                        d.getMaster() != null ? d.getMaster().getId() : null,
+                        d.getFullVersion(),
+                        d.getCreator(),
+                        req.getInitialReviewer(),
+                        req.getTechnicalReviewer()
+                );
+                System.out.println("INFO: Successfully started TWO-STAGE review workflow for document: " + d.getId());
+            } else {
+                // Legacy single-stage review workflow
+                workflowGateway.startReviewProcess(
+                        d.getId(),
+                        d.getMaster() != null ? d.getMaster().getId() : null,
+                        d.getFullVersion(),
+                        d.getCreator(),
+                        req.getReviewerIds()
+                );
+                System.out.println("INFO: Successfully started review workflow for document: " + d.getId());
+            }
         } catch (Exception e) {
             System.out.println("WARN: Failed to start review workflow, but document status updated: " + e.getMessage());
             // Don't throw exception - allow the submit to continue even if workflow fails

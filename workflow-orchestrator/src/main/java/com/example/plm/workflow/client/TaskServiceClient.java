@@ -22,6 +22,18 @@ public interface TaskServiceClient {
         @RequestParam(value = "assignedTo", required = false) String assignedTo
     );
     
+    // NEW: Create task with two-stage review information
+    @PostMapping("/tasks/create")
+    TaskDTO createTaskWithReviewInfo(
+        @RequestParam("name") String name,
+        @RequestParam("description") String description,
+        @RequestParam("userId") Long userId,
+        @RequestParam(value = "assignedTo", required = false) String assignedTo,
+        @RequestParam(value = "initialReviewer", required = false) String initialReviewer,
+        @RequestParam(value = "technicalReviewer", required = false) String technicalReviewer,
+        @RequestParam(value = "reviewStage", required = false) String reviewStage
+    );
+    
     @PutMapping("/tasks/{id}")
     TaskDTO updateTaskWithJobKey(
         @PathVariable("id") Long id,
@@ -37,6 +49,9 @@ public interface TaskServiceClient {
         private String description;
         private Long userId;
         private Long workflowJobKey;
+        private String initialReviewer;
+        private String technicalReviewer;
+        private String reviewStage;
         
         public TaskDTO() {}
         
@@ -50,6 +65,13 @@ public interface TaskServiceClient {
         public void setUserId(Long userId) { this.userId = userId; }
         public Long getWorkflowJobKey() { return workflowJobKey; }
         public void setWorkflowJobKey(Long workflowJobKey) { this.workflowJobKey = workflowJobKey; }
+        
+        public String getInitialReviewer() { return initialReviewer; }
+        public void setInitialReviewer(String initialReviewer) { this.initialReviewer = initialReviewer; }
+        public String getTechnicalReviewer() { return technicalReviewer; }
+        public void setTechnicalReviewer(String technicalReviewer) { this.technicalReviewer = technicalReviewer; }
+        public String getReviewStage() { return reviewStage; }
+        public void setReviewStage(String reviewStage) { this.reviewStage = reviewStage; }
     }
 }
 

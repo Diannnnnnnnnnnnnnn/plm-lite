@@ -22,6 +22,10 @@ const ReviewerSelectionDialog = ({ open, onClose, onSubmit, documentId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // NEW: Two-stage review support
+  const [initialReviewer, setInitialReviewer] = useState(null);
+  const [technicalReviewer, setTechnicalReviewer] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -53,17 +57,41 @@ const ReviewerSelectionDialog = ({ open, onClose, onSubmit, documentId }) => {
     });
   };
 
+  // NEW: Select reviewer for specific stage
+  const handleSelectInitialReviewer = (userId) => {
+    setInitialReviewer(userId);
+    if (technicalReviewer === userId) {
+      setTechnicalReviewer(null); // Can't be both reviewers
+    }
+  };
+
+  const handleSelectTechnicalReviewer = (userId) => {
+    setTechnicalReviewer(userId);
+    if (initialReviewer === userId) {
+      setInitialReviewer(null); // Can't be both reviewers
+    }
+  };
+
   const handleSubmit = () => {
-    if (selectedReviewers.length === 0) {
-      setError('Please select at least one reviewer');
+    // Two-stage review mode: both reviewers must be selected
+    if (!initialReviewer || !technicalReviewer) {
+      setError('Please select both Initial Reviewer and Technical Reviewer');
       return;
     }
-    onSubmit(selectedReviewers);
+    
+    // Submit with two-stage review format
+    onSubmit({
+      initialReviewer: initialReviewer,
+      technicalReviewer: technicalReviewer,
+      twoStageReview: true
+    });
     handleClose();
   };
 
   const handleClose = () => {
     setSelectedReviewers([]);
+    setInitialReviewer(null);
+    setTechnicalReviewer(null);
     setSearchTerm('');
     setError(null);
     onClose();
@@ -76,14 +104,18 @@ const ReviewerSelectionDialog = ({ open, onClose, onSubmit, documentId }) => {
   );
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Select Reviewers</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <DialogTitle>Select Reviewers - Two-Stage Review</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
+
+        <Alert severity="info" sx={{ mb: 2 }}>
+          This document will go through a two-stage review process. Select one reviewer for each stage.
+        </Alert>
 
         <TextField
           fullWidth
@@ -99,39 +131,114 @@ const ReviewerSelectionDialog = ({ open, onClose, onSubmit, documentId }) => {
             <CircularProgress />
           </div>
         ) : (
-          <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-            {filteredUsers.length === 0 ? (
-              <ListItem>
-                <ListItemText primary="No users found" />
-              </ListItem>
-            ) : (
-              filteredUsers.map((user) => (
-                <ListItem
-                  key={user.id}
-                  button
-                  onClick={() => handleToggleReviewer(user.id.toString())}
-                >
-                  <ListItemIcon>
-                    <Checkbox
-                      edge="start"
-                      checked={selectedReviewers.includes(user.id.toString())}
-                      tabIndex={-1}
-                      disableRipple
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={user.name || user.username}
-                    secondary={user.email || `User ID: ${user.id}`}
-                  />
-                </ListItem>
-              ))
-            )}
-          </List>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            {/* Initial Reviewer Column */}
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 600 }}>
+                1️⃣ Initial Reviewer
+              </h3>
+              {initialReviewer && (
+                <Alert severity="success" sx={{ mb: 1 }}>
+                  Selected: {users.find(u => u.id.toString() === initialReviewer)?.name || initialReviewer}
+                </Alert>
+              )}
+              <List sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1 }}>
+                {filteredUsers.length === 0 ? (
+                  <ListItem>
+                    <ListItemText primary="No users found" />
+                  </ListItem>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <ListItem
+                      key={`initial-${user.id}`}
+                      button
+                      onClick={() => handleSelectInitialReviewer(user.id.toString())}
+                      selected={initialReviewer === user.id.toString()}
+                      sx={{
+                        backgroundColor: initialReviewer === user.id.toString() ? 'primary.light' : 'inherit',
+                        '&.Mui-selected': {
+                          backgroundColor: 'primary.light',
+                          '&:hover': {
+                            backgroundColor: 'primary.main',
+                          }
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Checkbox
+                          edge="start"
+                          checked={initialReviewer === user.id.toString()}
+                          tabIndex={-1}
+                          disableRipple
+                          disabled={technicalReviewer === user.id.toString()}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={user.name || user.username}
+                        secondary={user.email || `User ID: ${user.id}`}
+                      />
+                    </ListItem>
+                  ))
+                )}
+              </List>
+            </div>
+
+            {/* Technical Reviewer Column */}
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 600 }}>
+                2️⃣ Technical Reviewer
+              </h3>
+              {technicalReviewer && (
+                <Alert severity="success" sx={{ mb: 1 }}>
+                  Selected: {users.find(u => u.id.toString() === technicalReviewer)?.name || technicalReviewer}
+                </Alert>
+              )}
+              <List sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1 }}>
+                {filteredUsers.length === 0 ? (
+                  <ListItem>
+                    <ListItemText primary="No users found" />
+                  </ListItem>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <ListItem
+                      key={`technical-${user.id}`}
+                      button
+                      onClick={() => handleSelectTechnicalReviewer(user.id.toString())}
+                      selected={technicalReviewer === user.id.toString()}
+                      sx={{
+                        backgroundColor: technicalReviewer === user.id.toString() ? 'secondary.light' : 'inherit',
+                        '&.Mui-selected': {
+                          backgroundColor: 'secondary.light',
+                          '&:hover': {
+                            backgroundColor: 'secondary.main',
+                          }
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Checkbox
+                          edge="start"
+                          checked={technicalReviewer === user.id.toString()}
+                          tabIndex={-1}
+                          disableRipple
+                          disabled={initialReviewer === user.id.toString()}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={user.name || user.username}
+                        secondary={user.email || `User ID: ${user.id}`}
+                      />
+                    </ListItem>
+                  ))
+                )}
+              </List>
+            </div>
+          </div>
         )}
 
-        {selectedReviewers.length > 0 && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            {selectedReviewers.length} reviewer(s) selected
+        {initialReviewer && technicalReviewer && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            ✓ Review Path: {users.find(u => u.id.toString() === initialReviewer)?.name} (Initial) → {users.find(u => u.id.toString() === technicalReviewer)?.name} (Technical) → Approval
           </Alert>
         )}
       </DialogContent>
@@ -140,9 +247,9 @@ const ReviewerSelectionDialog = ({ open, onClose, onSubmit, documentId }) => {
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading || selectedReviewers.length === 0}
+          disabled={loading || !initialReviewer || !technicalReviewer}
         >
-          Submit for Review
+          Submit for Two-Stage Review
         </Button>
       </DialogActions>
     </Dialog>

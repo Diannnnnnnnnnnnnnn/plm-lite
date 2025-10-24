@@ -571,15 +571,32 @@ export default function DocumentManager() {
     setReviewerDialogOpen(true);
   };
 
-  const handleReviewerSelection = async (reviewerIds) => {
+  const handleReviewerSelection = async (reviewerData) => {
     try {
-      const reviewData = {
-        user: 'current-user',
-        reviewerIds: reviewerIds
-      };
+      let reviewPayload;
+      
+      // Check if this is two-stage review or legacy format
+      if (reviewerData.twoStageReview) {
+        // NEW: Two-stage review format
+        reviewPayload = {
+          user: 'current-user',
+          initialReviewer: reviewerData.initialReviewer,
+          technicalReviewer: reviewerData.technicalReviewer,
+          twoStageReview: true
+        };
+        console.log('Submitting document for TWO-STAGE review:', documentToReview);
+        console.log('  Initial Reviewer:', reviewerData.initialReviewer);
+        console.log('  Technical Reviewer:', reviewerData.technicalReviewer);
+      } else {
+        // Legacy format (array of reviewer IDs)
+        reviewPayload = {
+          user: 'current-user',
+          reviewerIds: Array.isArray(reviewerData) ? reviewerData : [reviewerData]
+        };
+        console.log('Submitting document for review (legacy):', documentToReview, 'with reviewers:', reviewPayload.reviewerIds);
+      }
 
-      console.log('Submitting document for review:', documentToReview, 'with reviewers:', reviewerIds);
-      await documentService.submitForReview(documentToReview, reviewData);
+      await documentService.submitForReview(documentToReview, reviewPayload);
 
       await loadDocuments();
       setDocumentDetailsOpen(false);

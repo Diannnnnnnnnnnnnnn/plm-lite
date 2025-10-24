@@ -51,6 +51,41 @@ public class WorkflowGatewayFeign implements WorkflowGateway {
     }
 
     @Override
+    public void startTwoStageReviewProcess(String documentId, String masterId, String version, String creator, 
+                                           String initialReviewer, String technicalReviewer) {
+        System.out.println("🔵 WorkflowGateway: Starting TWO-STAGE document approval workflow");
+        System.out.println("   Document ID: " + documentId);
+        System.out.println("   Master ID: " + masterId);
+        System.out.println("   Version: " + version);
+        System.out.println("   Creator: " + creator);
+        System.out.println("   Initial Reviewer: " + initialReviewer);
+        System.out.println("   Technical Reviewer: " + technicalReviewer);
+
+        try {
+            // Create request DTO with two-stage review parameters
+            StartDocumentApprovalRequest request = new StartDocumentApprovalRequest();
+            request.setDocumentId(documentId);
+            request.setMasterId(masterId);
+            request.setVersion(version);
+            request.setCreator(creator);
+            request.setInitialReviewer(initialReviewer);
+            request.setTechnicalReviewer(technicalReviewer);
+
+            // Call workflow-orchestrator to start Camunda workflow
+            Map<String, String> response = client.startDocumentApprovalWorkflow(request);
+            
+            System.out.println("   ✓ Two-stage workflow started successfully!");
+            System.out.println("   Process Instance Key: " + response.get("processInstanceKey"));
+            System.out.println("   Status: " + response.get("status"));
+            
+        } catch (Exception e) {
+            System.err.println("   ❌ Failed to start two-stage workflow: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to start document approval workflow", e);
+        }
+    }
+
+    @Override
     public void notifyApprovalResult(String documentId, boolean approved, String approver, String comment) {
         System.out.println("🔵 WorkflowGateway: Notification for document: " + documentId);
         System.out.println("   Approved: " + approved + ", Approver: " + approver);

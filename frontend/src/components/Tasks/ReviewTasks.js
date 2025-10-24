@@ -76,10 +76,21 @@ export default function ReviewTasks({ userId }) {
     if (!selectedTask || !reviewAction) return;
 
     try {
+      // Step 1: Add signoff record (for tracking)
       await taskService.addTaskSignoff(
         selectedTask.id,
         userId,
         reviewAction,
+        reviewComment
+      );
+
+      // Step 2: Update task status to COMPLETED with approved flag
+      // This triggers the workflow to proceed!
+      const isApproved = reviewAction === 'APPROVED';
+      await taskService.updateTaskStatus(
+        selectedTask.id,
+        'COMPLETED',
+        isApproved,  // ← KEY: Pass approval decision to workflow
         reviewComment
       );
 

@@ -117,11 +117,23 @@ class TaskService {
     }
   }
 
-  async updateTaskStatus(taskId, status) {
+  async updateTaskStatus(taskId, status, approved = null, comments = null) {
     try {
-      const response = await this.api.put(`/tasks/${taskId}/status`, {
-        status
-      });
+      const payload = { status };
+      
+      // Add approved parameter if provided (for workflow integration)
+      if (approved !== null) {
+        payload.approved = approved ? 'true' : 'false';
+      }
+      
+      // Add comments if provided
+      if (comments) {
+        payload.comments = comments;
+      }
+      
+      console.log(`📤 Updating task ${taskId} status:`, payload);
+      
+      const response = await this.api.put(`/tasks/${taskId}/status`, payload);
       return response.data;
     } catch (error) {
       console.error(`Error updating task ${taskId} status:`, error);

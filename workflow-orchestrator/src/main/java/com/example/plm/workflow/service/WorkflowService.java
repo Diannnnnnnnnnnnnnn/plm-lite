@@ -32,7 +32,9 @@ public class WorkflowService {
      * @param masterId The document master ID (e.g., SPEC-001)
      * @param version The document version
      * @param creator The creator username
-     * @param reviewerIds List of reviewer user IDs
+     * @param reviewerIds List of reviewer user IDs (legacy support)
+     * @param initialReviewer The initial reviewer (for two-stage review)
+     * @param technicalReviewer The technical reviewer (for two-stage review)
      * @return The Zeebe process instance key
      */
     public String startDocumentApprovalWorkflow(
@@ -40,11 +42,20 @@ public class WorkflowService {
             String masterId, 
             String version, 
             String creator, 
-            List<String> reviewerIds) {
+            List<String> reviewerIds,
+            String initialReviewer,
+            String technicalReviewer) {
         
         System.out.println("🚀 Starting document approval workflow for: " + documentId);
         System.out.println("   Master ID: " + masterId + ", Version: " + version);
-        System.out.println("   Creator: " + creator + ", Reviewers: " + reviewerIds);
+        System.out.println("   Creator: " + creator);
+        if (initialReviewer != null && technicalReviewer != null) {
+            System.out.println("   Two-Stage Review Mode:");
+            System.out.println("   Initial Reviewer: " + initialReviewer);
+            System.out.println("   Technical Reviewer: " + technicalReviewer);
+        } else {
+            System.out.println("   Legacy Mode - Reviewers: " + reviewerIds);
+        }
 
         try {
             // Prepare workflow variables
@@ -53,17 +64,30 @@ public class WorkflowService {
             variables.put("masterId", masterId);
             variables.put("version", version);
             variables.put("creator", creator);
-            variables.put("reviewerIds", reviewerIds);
-            variables.put("approved", false); // Will be set by user task completion
+            // DON'T initialize 'approved' - let it be set by review completion
+            // If we set it to false here, it might interfere with the decision gateway
             
-            // Extract first reviewer for user task assignment
-            if (reviewerIds != null && !reviewerIds.isEmpty()) {
-                variables.put("reviewerId", reviewerIds.get(0));
+            // NEW: Support both two-stage review and legacy mode
+            String processId;
+            if (initialReviewer != null && technicalReviewer != null) {
+                // Two-stage review mode
+                variables.put("initialReviewer", initialReviewer);
+                variables.put("technicalReviewer", technicalReviewer);
+                processId = "document-approval-with-review";
+                System.out.println("   Using process: " + processId);
+            } else {
+                // Legacy mode
+                variables.put("reviewerIds", reviewerIds);
+                if (reviewerIds != null && !reviewerIds.isEmpty()) {
+                    variables.put("reviewerId", reviewerIds.get(0));
+                }
+                processId = "document-approval";
+                System.out.println("   Using process: " + processId);
             }
 
             // Start the workflow process
             ProcessInstanceEvent processInstance = zeebeClient.newCreateInstanceCommand()
-                    .bpmnProcessId("document-approval")
+                    .bpmnProcessId(processId)
                     .latestVersion()
                     .variables(variables)
                     .send()
@@ -97,6 +121,7 @@ public class WorkflowService {
     public void completeUserTask(long jobKey, Map<String, Object> variables) {
         System.out.println("✅ Completing user task: " + jobKey);
         System.out.println("   Variables: " + variables);
+        System.out.println("   🔍 DEBUG - approved value: " + variables.get("approved") + " (type: " + (variables.get("approved") != null ? variables.get("approved").getClass().getName() : "null") + ")");
 
         try {
             zeebeClient.newCompleteCommand(jobKey)
@@ -104,7 +129,7 @@ public class WorkflowService {
                     .send()
                     .join();
             
-            System.out.println("   ✓ Task completed successfully");
+            System.out.println("   ✓ Task completed successfully with approved=" + variables.get("approved"));
         } catch (Exception e) {
             System.err.println("❌ Failed to complete task: " + e.getMessage());
             e.printStackTrace();

@@ -58,6 +58,20 @@ public class WorkflowController {
                 result.put("document-approval", "FAILED: " + e.getMessage());
             }
 
+            // Deploy document-approval-with-review.bpmn (two-stage review)
+            try {
+                var deployment = zeebeClient.newDeployResourceCommand()
+                        .addResourceFromClasspath("bpmn/document-approval-with-review.bpmn")
+                        .send()
+                        .join();
+                System.out.println("   ✓ Deployed: document-approval-with-review.bpmn");
+                result.put("document-approval-with-review", "SUCCESS");
+                result.put("document-approval-with-review-key", deployment.getKey());
+            } catch (Exception e) {
+                System.err.println("   ✗ Failed to deploy document-approval-with-review.bpmn: " + e.getMessage());
+                result.put("document-approval-with-review", "FAILED: " + e.getMessage());
+            }
+
             // Deploy change-approval.bpmn
             try {
                 var deployment = zeebeClient.newDeployResourceCommand()
@@ -103,7 +117,9 @@ public class WorkflowController {
                 request.getMasterId(),
                 request.getVersion(),
                 request.getCreator(),
-                request.getReviewerIds()
+                request.getReviewerIds(),
+                request.getInitialReviewer(),
+                request.getTechnicalReviewer()
             );
 
             Map<String, String> response = new HashMap<>();
@@ -232,7 +248,7 @@ public class WorkflowController {
             request.setReviewerIds(reviewers);
             
             String processInstanceKey = workflowService.startDocumentApprovalWorkflow(
-                documentId, masterId, version, creator, reviewers
+                documentId, masterId, version, creator, reviewers, null, null
             );
             
             System.out.println("   ✓ Workflow started via legacy endpoint");
@@ -256,7 +272,11 @@ class StartDocumentApprovalRequest {
     private String masterId;
     private String version;
     private String creator;
-    private List<String> reviewerIds;
+    private List<String> reviewerIds; // Legacy support
+    
+    // NEW: Two-stage review support
+    private String initialReviewer;
+    private String technicalReviewer;
 
     // Getters and setters
     public String getDocumentId() { return documentId; }
@@ -269,6 +289,11 @@ class StartDocumentApprovalRequest {
     public void setCreator(String creator) { this.creator = creator; }
     public List<String> getReviewerIds() { return reviewerIds; }
     public void setReviewerIds(List<String> reviewerIds) { this.reviewerIds = reviewerIds; }
+    
+    public String getInitialReviewer() { return initialReviewer; }
+    public void setInitialReviewer(String initialReviewer) { this.initialReviewer = initialReviewer; }
+    public String getTechnicalReviewer() { return technicalReviewer; }
+    public void setTechnicalReviewer(String technicalReviewer) { this.technicalReviewer = technicalReviewer; }
 
     @Override
     public String toString() {
@@ -278,6 +303,8 @@ class StartDocumentApprovalRequest {
                 ", version='" + version + '\'' +
                 ", creator='" + creator + '\'' +
                 ", reviewerIds=" + reviewerIds +
+                ", initialReviewer='" + initialReviewer + '\'' +
+                ", technicalReviewer='" + technicalReviewer + '\'' +
                 '}';
     }
 }

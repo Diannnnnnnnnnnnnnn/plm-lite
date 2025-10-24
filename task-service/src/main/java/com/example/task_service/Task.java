@@ -25,13 +25,21 @@ public class Task implements Serializable { // Implement Serializable interface
     private Long id; // Auto-increment ID field
 
     private String name;
+    
+    @jakarta.persistence.Column(length = 1000) // Increase from default 255 to support detailed workflow descriptions
     private String description;
+    
     private Long userId; // Field to associate the task with a user
     private String assignedTo; // Username of the person assigned to this task
     private String taskStatus; // Task status: TODO, IN_PROGRESS, COMPLETED
     private java.time.LocalDateTime createdAt; // Task creation timestamp
     private java.time.LocalDateTime dueDate; // Task due date
     private Long workflowJobKey; // Zeebe workflow job key for automatic sync
+    
+    // Two-stage review fields
+    private String initialReviewer; // Username of the initial reviewer (1st stage)
+    private String technicalReviewer; // Username of the technical reviewer (2nd stage)
+    private String reviewStage; // Current review stage: INITIAL_REVIEW, TECHNICAL_REVIEW, or null
 
     //code for the relation of task and file
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
@@ -130,5 +138,30 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setWorkflowJobKey(Long workflowJobKey) {
         this.workflowJobKey = workflowJobKey;
+    }
+
+    // Two-stage review getters and setters
+    public String getInitialReviewer() {
+        return initialReviewer;
+    }
+
+    public void setInitialReviewer(String initialReviewer) {
+        this.initialReviewer = initialReviewer;
+    }
+
+    public String getTechnicalReviewer() {
+        return technicalReviewer;
+    }
+
+    public void setTechnicalReviewer(String technicalReviewer) {
+        this.technicalReviewer = technicalReviewer;
+    }
+
+    public String getReviewStage() {
+        return reviewStage;
+    }
+
+    public void setReviewStage(String reviewStage) {
+        this.reviewStage = reviewStage;
     }
 }

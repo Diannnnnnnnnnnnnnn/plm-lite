@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" 
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0" 
+                  id="Definitions_DocumentApprovalWithReview" 
+                  targetNamespace="http://bpmn.io/schema/bpmn" 
+                  exporter="Camunda Modeler" 
+                  exporterVersion="5.15.0" 
+                  modeler:executionPlatform="Camunda Cloud" 
+                  modeler:executionPlatformVersion="8.2.0">
+  
+  <bpmn:process id="document-approval-with-review" name="Document Approval Process with Review" isExecutable="true">
+    
+    <!-- START EVENT -->
+    <bpmn:startEvent id="StartEvent_DocumentSubmitted" name="Document&#10;Submitted">
+      <bpmn:outgoing>Flow_ToCreateTasks</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- CREATE APPROVAL TASKS -->
+    <bpmn:serviceTask id="ServiceTask_CreateApprovalTasks" name="Create&#10;Approval Tasks">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-approval-task" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToCreateTasks</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToInitialReview</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- INITIAL REVIEW -->
+    <bpmn:serviceTask id="ServiceTask_WaitForInitialReview" name="Wait For&#10;Initial Review">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="wait-for-initial-review" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToInitialReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToTechnicalReview</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- TECHNICAL REVIEW (stays in IN_REVIEW status) -->
+    <bpmn:serviceTask id="ServiceTask_WaitForTechnicalReview" name="Wait For&#10;Technical Review">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="wait-for-technical-review" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToTechnicalReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToDecision</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- EXCLUSIVE GATEWAY: APPROVE OR REJECT -->
+    <bpmn:exclusiveGateway id="Gateway_Decision" name="Approved?" default="Flow_Rejected">
+      <bpmn:incoming>Flow_ToDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- APPROVED PATH -->
+    <bpmn:serviceTask id="ServiceTask_UpdateApproved" name="Update Status:&#10;RELEASED">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=&#34;RELEASED&#34;" target="newStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Approved</bpmn:incoming>
+      <bpmn:outgoing>Flow_ApprovedToNotify</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="ServiceTask_NotifyApproval" name="Notify:&#10;Approved">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-completion" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ApprovedToNotify</bpmn:incoming>
+      <bpmn:outgoing>Flow_ApprovedToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- REJECTED PATH -->
+    <bpmn:serviceTask id="ServiceTask_UpdateRejected" name="Update Status:&#10;IN_WORK">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=&#34;IN_WORK&#34;" target="newStatus" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Rejected</bpmn:incoming>
+      <bpmn:outgoing>Flow_RejectedToNotify</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="ServiceTask_NotifyRejection" name="Notify:&#10;Rejected">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-completion" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_RejectedToNotify</bpmn:incoming>
+      <bpmn:outgoing>Flow_RejectedToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- MERGE TO END -->
+    <bpmn:exclusiveGateway id="Gateway_MergeToEnd">
+      <bpmn:incoming>Flow_ApprovedToEnd</bpmn:incoming>
+      <bpmn:incoming>Flow_RejectedToEnd</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- END EVENT -->
+    <bpmn:endEvent id="EndEvent_Complete" name="Workflow&#10;Complete">
+      <bpmn:incoming>Flow_ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- SEQUENCE FLOWS -->
+    <bpmn:sequenceFlow id="Flow_ToCreateTasks" sourceRef="StartEvent_DocumentSubmitted" targetRef="ServiceTask_CreateApprovalTasks" />
+    <bpmn:sequenceFlow id="Flow_ToInitialReview" sourceRef="ServiceTask_CreateApprovalTasks" targetRef="ServiceTask_WaitForInitialReview" />
+    <bpmn:sequenceFlow id="Flow_ToTechnicalReview" sourceRef="ServiceTask_WaitForInitialReview" targetRef="ServiceTask_WaitForTechnicalReview" />
+    <bpmn:sequenceFlow id="Flow_ToDecision" sourceRef="ServiceTask_WaitForTechnicalReview" targetRef="Gateway_Decision" />
+    
+    <bpmn:sequenceFlow id="Flow_Approved" name="Yes" sourceRef="Gateway_Decision" targetRef="ServiceTask_UpdateApproved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Rejected" name="No" sourceRef="Gateway_Decision" targetRef="ServiceTask_UpdateRejected" />
+    
+    <bpmn:sequenceFlow id="Flow_ApprovedToNotify" sourceRef="ServiceTask_UpdateApproved" targetRef="ServiceTask_NotifyApproval" />
+    <bpmn:sequenceFlow id="Flow_RejectedToNotify" sourceRef="ServiceTask_UpdateRejected" targetRef="ServiceTask_NotifyRejection" />
+    
+    <bpmn:sequenceFlow id="Flow_ApprovedToEnd" sourceRef="ServiceTask_NotifyApproval" targetRef="Gateway_MergeToEnd" />
+    <bpmn:sequenceFlow id="Flow_RejectedToEnd" sourceRef="ServiceTask_NotifyRejection" targetRef="Gateway_MergeToEnd" />
+    <bpmn:sequenceFlow id="Flow_ToEnd" sourceRef="Gateway_MergeToEnd" targetRef="EndEvent_Complete" />
+    
+  </bpmn:process>
+  
+  <!-- DIAGRAM VISUAL LAYOUT -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DocumentApprovalWithReview">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="document-approval-with-review">
+      
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="Shape_Start" bpmnElement="StartEvent_DocumentSubmitted">
+        <dc:Bounds x="152" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="142" y="235" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Create Tasks -->
+      <bpmndi:BPMNShape id="Shape_CreateTasks" bpmnElement="ServiceTask_CreateApprovalTasks">
+        <dc:Bounds x="240" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Initial Review -->
+      <bpmndi:BPMNShape id="Shape_InitialReview" bpmnElement="ServiceTask_WaitForInitialReview">
+        <dc:Bounds x="390" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- NEW: Technical Review -->
+      <bpmndi:BPMNShape id="Shape_TechnicalReview" bpmnElement="ServiceTask_WaitForTechnicalReview">
+        <dc:Bounds x="540" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Decision Gateway -->
+      <bpmndi:BPMNShape id="Shape_Decision" bpmnElement="Gateway_Decision" isMarkerVisible="true">
+        <dc:Bounds x="695" y="185" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="692" y="242" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Approved Path -->
+      <bpmndi:BPMNShape id="Shape_UpdateApproved" bpmnElement="ServiceTask_UpdateApproved">
+        <dc:Bounds x="800" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Shape_NotifyApproval" bpmnElement="ServiceTask_NotifyApproval">
+        <dc:Bounds x="950" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Rejected Path -->
+      <bpmndi:BPMNShape id="Shape_UpdateRejected" bpmnElement="ServiceTask_UpdateRejected">
+        <dc:Bounds x="800" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Shape_NotifyRejection" bpmnElement="ServiceTask_NotifyRejection">
+        <dc:Bounds x="950" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Merge Gateway -->
+      <bpmndi:BPMNShape id="Shape_Merge" bpmnElement="Gateway_MergeToEnd" isMarkerVisible="true">
+        <dc:Bounds x="1105" y="185" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="Shape_End" bpmnElement="EndEvent_Complete">
+        <dc:Bounds x="1212" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1202" y="235" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="Edge_ToCreateTasks" bpmnElement="Flow_ToCreateTasks">
+        <di:waypoint x="188" y="210" />
+        <di:waypoint x="240" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ToInitialReview" bpmnElement="Flow_ToInitialReview">
+        <di:waypoint x="340" y="210" />
+        <di:waypoint x="390" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ToTechnicalReview" bpmnElement="Flow_ToTechnicalReview">
+        <di:waypoint x="490" y="210" />
+        <di:waypoint x="540" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ToDecision" bpmnElement="Flow_ToDecision">
+        <di:waypoint x="640" y="210" />
+        <di:waypoint x="695" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_Approved" bpmnElement="Flow_Approved">
+        <di:waypoint x="745" y="210" />
+        <di:waypoint x="800" y="210" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="759" y="192" width="23" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_Rejected" bpmnElement="Flow_Rejected">
+        <di:waypoint x="720" y="185" />
+        <di:waypoint x="720" y="100" />
+        <di:waypoint x="800" y="100" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="734" y="140" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ApprovedToNotify" bpmnElement="Flow_ApprovedToNotify">
+        <di:waypoint x="900" y="210" />
+        <di:waypoint x="950" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_RejectedToNotify" bpmnElement="Flow_RejectedToNotify">
+        <di:waypoint x="900" y="100" />
+        <di:waypoint x="950" y="100" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ApprovedToEnd" bpmnElement="Flow_ApprovedToEnd">
+        <di:waypoint x="1050" y="210" />
+        <di:waypoint x="1105" y="210" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_RejectedToEnd" bpmnElement="Flow_RejectedToEnd">
+        <di:waypoint x="1050" y="100" />
+        <di:waypoint x="1130" y="100" />
+        <di:waypoint x="1130" y="185" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Edge_ToEnd" bpmnElement="Flow_ToEnd">
+        <di:waypoint x="1155" y="210" />
+        <di:waypoint x="1212" y="210" />
+      </bpmndi:BPMNEdge>
+      
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  
+</bpmn:definitions>
+

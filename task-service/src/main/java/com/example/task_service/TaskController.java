@@ -84,11 +84,15 @@ public class TaskController {
             // ✅ AUTOMATIC WORKFLOW SYNC: If task is completed and has a workflow job key, complete the workflow!
             if ("COMPLETED".equalsIgnoreCase(newStatus) && updatedTask.getWorkflowJobKey() != null) {
                 System.out.println("🔄 Auto-completing workflow job: " + updatedTask.getWorkflowJobKey());
+                System.out.println("   📥 Received approved parameter: '" + approved + "'");
                 try {
                     Map<String, Object> workflowVariables = new HashMap<>();
                     // Default to approved if not explicitly rejected
-                    workflowVariables.put("approved", !"false".equalsIgnoreCase(approved) && !"rejected".equalsIgnoreCase(approved));
+                    boolean approvedValue = !"false".equalsIgnoreCase(approved) && !"rejected".equalsIgnoreCase(approved);
+                    workflowVariables.put("approved", approvedValue);
                     workflowVariables.put("comments", comments != null ? comments : "Task completed");
+                    
+                    System.out.println("   📤 Sending to workflow - approved: " + approvedValue + ", comments: " + (comments != null ? comments : "Task completed"));
                     
                     workflowClient.completeWorkflowJob(updatedTask.getWorkflowJobKey(), workflowVariables);
                     System.out.println("   ✅ Workflow job completed successfully!");
@@ -112,7 +116,11 @@ public class TaskController {
             @RequestParam Long userId,
             @RequestParam(value = "assignedTo", required = false) String assignedTo,
             @RequestParam(value = "jobKey", required = false) Long jobKey,
-            @RequestParam(value = "files", required = false) MultipartFile[] files
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
+            // NEW: Two-stage review parameters
+            @RequestParam(value = "initialReviewer", required = false) String initialReviewer,
+            @RequestParam(value = "technicalReviewer", required = false) String technicalReviewer,
+            @RequestParam(value = "reviewStage", required = false) String reviewStage
     ) {
         Task task = new Task();
         task.setName(name);
@@ -123,10 +131,35 @@ public class TaskController {
         }
         task.setWorkflowJobKey(jobKey); // Store the workflow job key for automatic sync
 
+        // NEW: Set two-stage review fields
+        if (initialReviewer != null && !initialReviewer.isBlank()) {
+            task.setInitialReviewer(initialReviewer);
+        }
+        if (technicalReviewer != null && !technicalReviewer.isBlank()) {
+            task.setTechnicalReviewer(technicalReviewer);
+        }
+        if (reviewStage != null && !reviewStage.isBlank()) {
+            task.setReviewStage(reviewStage);
+        }
+
         List<MultipartFile> fileList = (files != null) ? List.of(files) : null;
 
-        Task createdTask = taskService.addTask(task, fileList);
-        return ResponseEntity.ok(createdTask);
+        try {
+            System.out.println("📝 Creating task with review info:");
+            System.out.println("   Name: " + name);
+            System.out.println("   AssignedTo: " + assignedTo);
+            System.out.println("   InitialReviewer: " + initialReviewer);
+            System.out.println("   TechnicalReviewer: " + technicalReviewer);
+            System.out.println("   ReviewStage: " + reviewStage);
+            
+            Task createdTask = taskService.addTask(task, fileList);
+            System.out.println("   ✅ Task created successfully: ID " + createdTask.getId());
+            return ResponseEntity.ok(createdTask);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR creating task: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
     
     // This is for the workflow

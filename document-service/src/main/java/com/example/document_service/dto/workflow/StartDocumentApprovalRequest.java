@@ -10,7 +10,11 @@ public class StartDocumentApprovalRequest {
     private String masterId;
     private String version;
     private String creator;
-    private List<String> reviewerIds;
+    private List<String> reviewerIds; // Legacy support
+    
+    // NEW: Two-stage review support
+    private String initialReviewer;
+    private String technicalReviewer;
 
     public StartDocumentApprovalRequest() {}
 
@@ -38,5 +42,11 @@ public class StartDocumentApprovalRequest {
     
     public List<String> getReviewerIds() { return reviewerIds; }
     public void setReviewerIds(List<String> reviewerIds) { this.reviewerIds = reviewerIds; }
+    
+    public String getInitialReviewer() { return initialReviewer; }
+    public void setInitialReviewer(String initialReviewer) { this.initialReviewer = initialReviewer; }
+    
+    public String getTechnicalReviewer() { return technicalReviewer; }
+    public void setTechnicalReviewer(String technicalReviewer) { this.technicalReviewer = technicalReviewer; }
 }
 
