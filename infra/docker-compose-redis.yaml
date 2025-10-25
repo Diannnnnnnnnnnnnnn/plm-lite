@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: plm-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass plm_redis_password
+    volumes:
+      - redis-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: plm-redis-commander
+    environment:
+      - REDIS_HOSTS=local:plm-redis:6379:0:plm_redis_password
+    ports:
+      - "8085:8081"
+    networks:
+      - plm-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  plm-network:
+    driver: bridge
+

@@ -29,6 +29,10 @@ public class JwtUtil {
         this.expirationMinutes = expirationMinutes;
     }
 
+    public SecretKey getKey() {
+        return key;
+    }
+
     // Generate JWT token with subject and optional claims
     public String generate(String subject, Map<String, Object> claims) {
         Instant now = Instant.now();

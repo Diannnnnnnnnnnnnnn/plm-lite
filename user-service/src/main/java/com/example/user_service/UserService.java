@@ -59,7 +59,7 @@ public class UserService {
         return savedUser;
     }
 
-    @CacheEvict(value = "users", key = "'all'")
+    @CacheEvict(value = "users", allEntries = true)
     public User updateUser(Long id, User user) {
         if (userRepository.existsById(id)) {
             user.setId(id);
@@ -73,7 +73,7 @@ public class UserService {
         }
     }
 
-    @CacheEvict(value = "users", key = "'all'")
+    @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
@@ -81,7 +81,9 @@ public class UserService {
     // ==============================
     // Methods for Auth Service
     // ==============================
+    @Cacheable(value = "users", key = "'username:' + #username")
     public User findByUsername(String username) {
+        System.out.println("Fetching user by username from database: " + username);
         return userRepository.findByUsername(username);
     }
 

@@ -1,4 +1,4 @@
-package com.example.user_service;
+package com.example.auth_service.config;
 
 import java.time.Duration;
 
@@ -30,13 +30,24 @@ public class RedisConfig implements org.springframework.cache.annotation.Caching
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-            .entryTtl(Duration.ofMinutes(10))
+        // Default cache configuration - 1 hour TTL for general caches
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+            .entryTtl(Duration.ofMinutes(60))
             .serializeValuesWith(
                 RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())
             );
 
-        return RedisCacheManager.builder(redisConnectionFactory).cacheDefaults(config).build();
+        // JWT blacklist cache - keep until token expiration
+        RedisCacheConfiguration jwtBlacklistConfig = RedisCacheConfiguration.defaultCacheConfig()
+            .entryTtl(Duration.ofHours(2))
+            .serializeValuesWith(
+                RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())
+            );
+
+        return RedisCacheManager.builder(redisConnectionFactory)
+            .cacheDefaults(defaultConfig)
+            .withCacheConfiguration("jwtBlacklist", jwtBlacklistConfig)
+            .build();
     }
 
     @Bean
@@ -50,3 +61,4 @@ public class RedisConfig implements org.springframework.cache.annotation.Caching
         return template;
     }
 }
+
