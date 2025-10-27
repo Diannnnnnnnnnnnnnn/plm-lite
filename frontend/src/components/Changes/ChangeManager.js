@@ -209,6 +209,7 @@ export default function ChangeManager() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [availableDocuments, setAvailableDocuments] = useState([]);
   const [availableBOMs, setAvailableBOMs] = useState([]);
+  const [availableParts, setAvailableParts] = useState([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [loadingBOMs, setLoadingBOMs] = useState(false);
   const [documentSearchTerm, setDocumentSearchTerm] = useState('');
@@ -280,11 +281,18 @@ export default function ChangeManager() {
   const loadBOMs = async () => {
     try {
       setLoadingBOMs(true);
-      const boms = await bomService.getAllBoms();
+      // Load both BOMs (old structure) and Parts (new structure)
+      const [boms, parts] = await Promise.all([
+        bomService.getAllBoms().catch(() => []),
+        bomService.getAllParts().catch(() => [])
+      ]);
       setAvailableBOMs(boms);
+      setAvailableParts(parts);
+      console.log('Loaded BOMs:', boms);
+      console.log('Loaded Parts:', parts);
     } catch (error) {
-      console.error('Error loading BOMs:', error);
-      setError('Failed to load BOMs');
+      console.error('Error loading BOMs/Parts:', error);
+      setError('Failed to load BOMs and Parts');
     } finally {
       setLoadingBOMs(false);
     }
@@ -329,15 +337,32 @@ export default function ChangeManager() {
     setBomSearchTerm('');
   };
 
+  const handleSelectPart = (part) => {
+    setNewChange({
+      ...newChange,
+      product: part.id,
+      selectedProductInfo: {
+        id: part.id,
+        description: part.description || part.title,
+        partNumber: part.partNumber,
+        type: 'Part',
+        stage: part.stage
+      }
+    });
+    setBomSelectionOpen(false);
+    setBomSearchTerm('');
+  };
+
   const handleSelectBOMItem = (item, bomId, bomDescription) => {
     setNewChange({
       ...newChange,
-      product: `${bomId}-${item.id}`,
+      product: item.id, // Use the actual part ID from the BOM item
       selectedProductInfo: {
-        id: `${bomId}-${item.id}`,
+        id: item.id,
         description: `${item.description} (from ${bomDescription})`,
         partNumber: item.partNumber,
-        type: 'Part'
+        type: 'Part',
+        bomId: bomId // Keep reference to parent BOM for display purposes
       }
     });
     setBomSelectionOpen(false);
@@ -392,6 +417,17 @@ export default function ChangeManager() {
         item.description.toLowerCase().includes(bomSearchTerm.toLowerCase()) ||
         item.partNumber.toLowerCase().includes(bomSearchTerm.toLowerCase())
       ))
+    );
+  };
+
+  const getFilteredParts = () => {
+    if (!bomSearchTerm) return availableParts;
+    return availableParts.filter(part =>
+      (part.description && part.description.toLowerCase().includes(bomSearchTerm.toLowerCase())) ||
+      (part.title && part.title.toLowerCase().includes(bomSearchTerm.toLowerCase())) ||
+      (part.partNumber && part.partNumber.toLowerCase().includes(bomSearchTerm.toLowerCase())) ||
+      (part.id && part.id.toLowerCase().includes(bomSearchTerm.toLowerCase())) ||
+      (part.creator && part.creator.toLowerCase().includes(bomSearchTerm.toLowerCase()))
     );
   };
 
@@ -612,6 +648,10 @@ export default function ChangeManager() {
       }
       
       const currentUser = getCurrentUsername();
+      // Determine if the selected product is a BOM or Part
+      const isBOM = newChange.selectedProductInfo?.type === 'BOM';
+      const isPart = newChange.selectedProductInfo?.type === 'Part';
+
       const changeData = {
         title: newChange.title,
         changeClass: newChange.changeClass,
@@ -621,7 +661,8 @@ export default function ChangeManager() {
         changeReason: newChange.changeReason,
         changeDocument: newChange.changeDocument,
         documentIds: newChange.changeDocument ? [newChange.changeDocument] : [],
-        bomIds: newChange.product ? [newChange.product] : []
+        bomIds: isBOM && newChange.product ? [newChange.product] : [],
+        partIds: isPart && newChange.product ? [newChange.product] : []
       };
 
       await changeService.createChange(changeData);
@@ -1397,15 +1438,99 @@ export default function ChangeManager() {
           ) : (
             <Paper sx={{ maxHeight: 500, overflow: 'auto' }}>
               <List>
-                {getFilteredBOMs().length === 0 ? (
+                {getFilteredBOMs().length === 0 && getFilteredParts().length === 0 ? (
                   <ListItem>
                     <ListItemText
-                      primary="No BOMs found"
-                      secondary="Try adjusting your search terms"
+                      primary="No BOMs or Parts found"
+                      secondary="Try adjusting your search terms or create a part first"
                     />
                   </ListItem>
                 ) : (
-                  getFilteredBOMs().map((bom) => (
+                  <>
+                  {/* Standalone Parts Section */}
+                  {getFilteredParts().length > 0 && (
+                    <>
+                      <ListItem sx={{ bgcolor: 'grey.200', py: 1 }}>
+                        <ListItemText
+                          primary={<Typography variant="subtitle2" fontWeight="bold">Standalone Parts</Typography>}
+                          secondary={`${getFilteredParts().length} part(s) available`}
+                        />
+                      </ListItem>
+                      {getFilteredParts().map((part) => (
+                        <ListItem key={part.id} disablePadding>
+                          <ListItemButton
+                            onClick={() => handleSelectPart(part)}
+                            sx={{
+                              bgcolor: 'secondary.light',
+                              mb: 0.5,
+                              '&:hover': { bgcolor: 'secondary.main' }
+                            }}
+                          >
+                            <ListItemIcon>
+                              <PartIcon color="secondary" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Box>
+                                  <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>
+                                    {part.description || part.title}
+                                  </Typography>
+                                  <Box display="flex" gap={1} mt={0.5}>
+                                    {part.partNumber && (
+                                      <Chip
+                                        label={`PN: ${part.partNumber}`}
+                                        size="small"
+                                        color="secondary"
+                                      />
+                                    )}
+                                    {part.stage && (
+                                      <Chip
+                                        label={part.stage}
+                                        size="small"
+                                        color="secondary"
+                                      />
+                                    )}
+                                    {part.status && (
+                                      <Chip
+                                        label={part.status}
+                                        size="small"
+                                        color="secondary"
+                                      />
+                                    )}
+                                  </Box>
+                                </Box>
+                              }
+                              secondary={
+                                <Box sx={{ mt: 1 }}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Part ID: {part.id} • Creator: {part.creator || 'N/A'}
+                                  </Typography>
+                                  {part.createTime && (
+                                    <Typography variant="body2" color="textSecondary">
+                                      Created: {new Date(part.createTime).toLocaleDateString()}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </>
+                  )}
+
+                  {/* BOMs Section */}
+                  {getFilteredBOMs().length > 0 && (
+                    <>
+                      {getFilteredParts().length > 0 && (
+                        <ListItem sx={{ bgcolor: 'grey.200', py: 1, mt: 2 }}>
+                          <ListItemText
+                            primary={<Typography variant="subtitle2" fontWeight="bold">BOM Headers (Legacy)</Typography>}
+                            secondary={`${getFilteredBOMs().length} BOM(s) with parts`}
+                          />
+                        </ListItem>
+                      )}
+                      {getFilteredBOMs().map((bom) => (
                     <Box key={bom.id}>
                       {/* BOM Header */}
                       <ListItem disablePadding>
@@ -1512,7 +1637,10 @@ export default function ChangeManager() {
                         </Box>
                       )}
                     </Box>
-                  ))
+                  ))}
+                  </>
+                  )}
+                  </>
                 )}
               </List>
             </Paper>

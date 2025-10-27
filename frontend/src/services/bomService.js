@@ -92,6 +92,81 @@ class BomService {
     }
   }
 
+  async updatePart(id, partData) {
+    try {
+      const response = await this.api.put(`/parts/${id}`, partData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating part ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deletePart(id) {
+    try {
+      await this.api.delete(`/parts/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error deleting part ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getPartById(id) {
+    try {
+      const response = await this.api.get(`/parts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching part ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getPartHierarchy(id) {
+    try {
+      const response = await this.api.get(`/parts/${id}/bom-hierarchy`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching part hierarchy ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async addPartUsage(parentPartId, childPartId, quantity) {
+    try {
+      const response = await this.api.post('/parts/usage', {
+        parentPartId,
+        childPartId,
+        quantity
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding part usage:', error);
+      throw error;
+    }
+  }
+
+  async removePartUsage(parentPartId, childPartId) {
+    try {
+      await this.api.delete(`/parts/${parentPartId}/usage/${childPartId}`);
+      return true;
+    } catch (error) {
+      console.error('Error removing part usage:', error);
+      throw error;
+    }
+  }
+
+  async getChildParts(parentPartId) {
+    try {
+      const response = await this.api.get(`/parts/${parentPartId}/children`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting child parts:', error);
+      throw error;
+    }
+  }
+
+  // Legacy BOM methods - kept for backward compatibility during migration
   async addPartToBom(bomId, partUsageData) {
     try {
       const response = await this.api.post(`/boms/${bomId}/parts`, partUsageData);

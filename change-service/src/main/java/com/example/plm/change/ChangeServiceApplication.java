@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
 
 @SpringBootApplication(
-    scanBasePackages = {"com.example.plm.change", "com.example.plm.common"},
+    scanBasePackages = {"com.example.plm.change", "com.example.plm.common", "com.example.change_service"},
     exclude = {
         Neo4jDataAutoConfiguration.class,
         Neo4jRepositoriesAutoConfiguration.class,
@@ -26,7 +26,7 @@ import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
         org.springframework.boot.autoconfigure.data.neo4j.Neo4jReactiveRepositoriesAutoConfiguration.class
     }
 )
-@EnableFeignClients
+@EnableFeignClients(basePackages = {"com.example.plm.change.client", "com.example.change_service.client"})
 @EnableJpaRepositories(basePackages = "com.example.plm.change.repository.mysql")
 public class ChangeServiceApplication {
 

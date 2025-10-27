@@ -19,6 +19,7 @@ public class ChangeResponse {
     private String changeReason;
     private String changeDocument;
     private List<String> bomIds = new ArrayList<>();
+    private List<String> partIds = new ArrayList<>();
 
     public ChangeResponse() {}
 
@@ -69,4 +70,7 @@ public class ChangeResponse {
 
     public List<String> getBomIds() { return bomIds; }
     public void setBomIds(List<String> bomIds) { this.bomIds = bomIds; }
+
+    public List<String> getPartIds() { return partIds; }
+    public void setPartIds(List<String> partIds) { this.partIds = partIds; }
 }

@@ -1,40 +1,82 @@
 package com.example.graph_service.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Neo4j Node representing a User in the PLM system.
+ * Synced from user-service MySQL database.
+ */
 @Node("User")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserNode {
 
     @Id
     private String id;
 
-    private String name;
+    private String username;
+    private String email;
+    private String department;
+    private String role;
 
-    @Relationship(type = "ASSIGNED_TO")
-    private List<TaskNode> tasks = new ArrayList<>();
+    /**
+     * Parts created by this user
+     */
+    @Relationship(type = "CREATED_BY", direction = Relationship.Direction.INCOMING)
+    private List<PartNode> createdParts = new ArrayList<>();
 
-    // ✅ No-arg constructor
-    public UserNode() {}
+    /**
+     * Documents created by this user
+     */
+    @Relationship(type = "CREATED_BY", direction = Relationship.Direction.INCOMING)
+    private List<DocumentNode> createdDocuments = new ArrayList<>();
 
-    // ✅ All-arg constructor
-    public UserNode(String id, String name, List<TaskNode> tasks) {
+    /**
+     * Changes initiated by this user
+     */
+    @Relationship(type = "INITIATED_BY", direction = Relationship.Direction.INCOMING)
+    private List<ChangeNode> initiatedChanges = new ArrayList<>();
+
+    /**
+     * Tasks assigned to this user
+     */
+    @Relationship(type = "ASSIGNED_TO", direction = Relationship.Direction.OUTGOING)
+    private List<TaskNode> assignedTasks = new ArrayList<>();
+
+    /**
+     * Manager of this user (organizational hierarchy)
+     */
+    @Relationship(type = "REPORTS_TO", direction = Relationship.Direction.OUTGOING)
+    private UserNode manager;
+
+    /**
+     * Direct reports of this user
+     */
+    @Relationship(type = "REPORTS_TO", direction = Relationship.Direction.INCOMING)
+    private List<UserNode> directReports = new ArrayList<>();
+
+    // Convenience constructors for backward compatibility
+    public UserNode(String id, String username, String email) {
         this.id = id;
-        this.name = name;
-        this.tasks = tasks;
+        this.username = username;
+        this.email = email;
     }
-
-    // ✅ Getters and setters (you can generate these in your IDE if needed)
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public List<TaskNode> getTasks() { return tasks; }
-    public void setTasks(List<TaskNode> tasks) { this.tasks = tasks; }
+    
+    // Legacy compatibility - name maps to username
+    public String getName() { 
+        return username; 
+    }
+    
+    public void setName(String name) { 
+        this.username = name; 
+    }
 }

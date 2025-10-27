@@ -42,4 +42,36 @@ public class LocalFileStorageService {
             return new byte[0];
         }
     }
+
+    public boolean deleteFile(String filename) {
+        try {
+            Path filePath = Paths.get(UPLOAD_DIR, filename);
+            boolean deleted = Files.deleteIfExists(filePath);
+            if (deleted) {
+                System.out.println("INFO: File deleted locally: " + filePath.toAbsolutePath());
+            }
+            return deleted;
+        } catch (IOException e) {
+            System.err.println("Failed to delete file: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean fileExists(String filename) {
+        Path filePath = Paths.get(UPLOAD_DIR, filename);
+        return Files.exists(filePath);
+    }
+
+    public long getFileSize(String filename) {
+        try {
+            Path filePath = Paths.get(UPLOAD_DIR, filename);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+            return -1;
+        } catch (IOException e) {
+            System.err.println("Failed to get file size: " + e.getMessage());
+            return -1;
+        }
+    }
 }

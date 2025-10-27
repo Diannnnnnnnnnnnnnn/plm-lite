@@ -45,16 +45,19 @@ public class DocumentController {
     private final DocumentService documentService;
     private final FileStorageGateway fileStorageGateway;
     private final SearchGateway searchGateway;
+    private final com.example.document_service.service.impl.MinIOFileStorageService minioService;
 
     public DocumentController(DocumentService documentService,
                               FileStorageGateway fileStorageGateway,
-                              SearchGateway searchGateway) {
+                              SearchGateway searchGateway,
+                              com.example.document_service.service.impl.MinIOFileStorageService minioService) {
         if (documentService == null) {
             throw new IllegalArgumentException("DocumentService cannot be null");
         }
         this.documentService = documentService;
         this.fileStorageGateway = fileStorageGateway;
         this.searchGateway = searchGateway;
+        this.minioService = minioService;
     }
 
     @GetMapping
@@ -159,7 +162,10 @@ public class DocumentController {
                          @RequestPart MultipartFile file,
                          @RequestParam String user) {
         String objectKey = fileStorageGateway.upload(id, file);
-        documentService.attachFileKey(id, objectKey, user);
+        
+        // Save file metadata to document
+        documentService.attachFileWithMetadata(id, objectKey, file, user);
+        
         return objectKey;
     }
 
@@ -237,6 +243,95 @@ public class DocumentController {
         return documents.stream()
                         .map(DocumentMapper::toResponse)
                         .collect(Collectors.toList());
+    }
+
+    /**
+     * Delete file from document (but keep the document)
+     */
+    @DeleteMapping("/{id}/file")
+    public ResponseEntity<String> deleteDocumentFile(@PathVariable String id) {
+        Document document = documentService.getById(id);
+        if (document.getFileKey() == null || document.getFileKey().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean deleted = fileStorageGateway.delete(document.getFileKey());
+        if (deleted) {
+            // Clear file metadata in document
+            documentService.clearFileMetadata(id);
+            return ResponseEntity.ok("File deleted successfully");
+        } else {
+            return ResponseEntity.status(500).body("Failed to delete file");
+        }
+    }
+
+    /**
+     * Get file metadata/info for a document
+     */
+    @GetMapping("/{id}/file/info")
+    public ResponseEntity<Object> getDocumentFileInfo(@PathVariable String id) {
+        Document document = documentService.getById(id);
+        if (document.getFileKey() == null || document.getFileKey().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Create file info response
+        var fileInfo = new java.util.HashMap<String, Object>();
+        fileInfo.put("fileKey", document.getFileKey());
+        fileInfo.put("originalFilename", document.getOriginalFilename());
+        fileInfo.put("contentType", document.getContentType());
+        fileInfo.put("fileSize", document.getFileSize());
+        fileInfo.put("storageLocation", document.getStorageLocation());
+        fileInfo.put("uploadedAt", document.getFileUploadedAt());
+        
+        // Check if file actually exists in storage
+        boolean exists = fileStorageGateway.exists(document.getFileKey());
+        fileInfo.put("exists", exists);
+        
+        // Get actual file size from storage if available
+        if (exists) {
+            long actualSize = fileStorageGateway.getFileSize(document.getFileKey());
+            if (actualSize > 0) {
+                fileInfo.put("actualFileSize", actualSize);
+            }
+        }
+
+        return ResponseEntity.ok(fileInfo);
+    }
+
+    /**
+     * Check if file exists for a document
+     */
+    @GetMapping("/{id}/file/exists")
+    public ResponseEntity<Boolean> checkDocumentFileExists(@PathVariable String id) {
+        Document document = documentService.getById(id);
+        if (document.getFileKey() == null || document.getFileKey().isEmpty()) {
+            return ResponseEntity.ok(false);
+        }
+
+        boolean exists = fileStorageGateway.exists(document.getFileKey());
+        return ResponseEntity.ok(exists);
+    }
+
+    /**
+     * MinIO Health Check Endpoint
+     */
+    @GetMapping("/health/minio")
+    public ResponseEntity<Object> checkMinioHealth() {
+        var health = new java.util.HashMap<String, Object>();
+        
+        boolean isHealthy = minioService.isHealthy();
+        health.put("status", isHealthy ? "UP" : "DOWN");
+        health.put("service", "MinIO Object Storage");
+        health.put("timestamp", java.time.LocalDateTime.now());
+        
+        if (isHealthy) {
+            health.put("message", "MinIO is accessible and healthy");
+            return ResponseEntity.ok(health);
+        } else {
+            health.put("message", "MinIO is not accessible");
+            return ResponseEntity.status(503).body(health);
+        }
     }
 
     private MediaType getContentTypeByFilename(String filename) {

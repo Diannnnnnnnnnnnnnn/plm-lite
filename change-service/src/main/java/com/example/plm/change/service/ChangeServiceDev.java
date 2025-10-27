@@ -21,6 +21,7 @@ import com.example.plm.change.dto.ChangeResponse;
 import com.example.plm.change.dto.CreateChangeRequest;
 import com.example.plm.change.model.Change;
 import com.example.plm.change.model.ChangeBom;
+import com.example.plm.change.model.ChangePart;
 import com.example.plm.change.model.ChangeSearchDocument;
 import com.example.plm.change.repository.mysql.ChangeBomRepository;
 import com.example.plm.change.repository.mysql.ChangeDocumentRepository;
@@ -28,8 +29,15 @@ import com.example.plm.change.repository.mysql.ChangePartRepository;
 import com.example.plm.change.repository.mysql.ChangeRepository;
 import com.example.plm.common.model.Status;
 
+// Graph Service imports
+import com.example.change_service.client.GraphServiceClient;
+import com.example.change_service.client.ChangeSyncDto;
+
+import lombok.extern.slf4j.Slf4j;
+
 @Service
 @Profile("dev")
+@Slf4j
 public class ChangeServiceDev {
 
     @Autowired
@@ -52,6 +60,9 @@ public class ChangeServiceDev {
 
     @Autowired(required = false)
     private UserServiceClient userServiceClient;
+
+    @Autowired(required = false)
+    private GraphServiceClient graphServiceClient;
 
     @FeignClient(name = "user-service-dev", url = "http://localhost:8083")
     public interface UserServiceClient {
@@ -128,6 +139,9 @@ public class ChangeServiceDev {
 
         change = changeRepository.save(change);
 
+        // Sync to Neo4j
+        syncChangeToGraph(change);
+
         // Create BOM relationships if provided
         if (request.getBomIds() != null && !request.getBomIds().isEmpty()) {
             for (String bomId : request.getBomIds()) {
@@ -136,7 +150,53 @@ public class ChangeServiceDev {
             }
         }
 
+        // Create Part relationships if provided
+        if (request.getPartIds() != null && !request.getPartIds().isEmpty()) {
+            for (String partId : request.getPartIds()) {
+                ChangePart changePart = new ChangePart(
+                    UUID.randomUUID().toString(),
+                    change,
+                    partId
+                );
+                changePartRepository.save(changePart);
+                
+                // Sync to Neo4j graph
+                if (graphServiceClient != null) {
+                    try {
+                        graphServiceClient.syncChangePart(changeId, partId);
+                        log.info("✅ Change-Part link {} -> {} synced to graph", changeId, partId);
+                    } catch (Exception e) {
+                        log.warn("⚠️ Failed to sync change-part link to graph: {}", e.getMessage());
+                    }
+                }
+            }
+        }
+
         return mapToResponse(change);
+    }
+    
+    private void syncChangeToGraph(Change change) {
+        if (graphServiceClient == null) {
+            log.warn("GraphServiceClient not available, skipping sync");
+            return;
+        }
+        
+        try {
+            ChangeSyncDto dto = new ChangeSyncDto(
+                change.getId(),
+                change.getTitle(),
+                change.getChangeReason() != null ? change.getChangeReason() : "", // description
+                change.getStatus() != null ? change.getStatus().name() : "IN_WORK", // status
+                change.getStage() != null ? change.getStage().name() : "DESIGN", // priority (using stage as priority)
+                change.getChangeClass() != null ? change.getChangeClass() : "NORMAL", // changeType
+                change.getCreator(), // initiator
+                change.getCreateTime()
+            );
+            graphServiceClient.syncChange(dto);
+            log.info("✅ Change {} synced to graph successfully", change.getId());
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync change {} to graph: {}", change.getId(), e.getMessage());
+        }
     }
 
     @Transactional
@@ -283,6 +343,13 @@ public class ChangeServiceDev {
             .map(ChangeBom::getBomId)
             .collect(Collectors.toList());
         response.setBomIds(bomIds);
+
+        // Load Part IDs
+        List<String> partIds = changePartRepository.findByChangeId(change.getId())
+            .stream()
+            .map(ChangePart::getPartId)
+            .collect(Collectors.toList());
+        response.setPartIds(partIds);
 
         return response;
     }

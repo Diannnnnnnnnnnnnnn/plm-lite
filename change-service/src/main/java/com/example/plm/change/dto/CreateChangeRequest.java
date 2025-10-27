@@ -30,6 +30,7 @@ public class CreateChangeRequest {
     private String changeDocument;
 
     private List<String> bomIds = new ArrayList<>();
+    private List<String> partIds = new ArrayList<>();
 
     public CreateChangeRequest() {}
 
@@ -67,4 +68,7 @@ public class CreateChangeRequest {
 
     public List<String> getBomIds() { return bomIds; }
     public void setBomIds(List<String> bomIds) { this.bomIds = bomIds; }
+
+    public List<String> getPartIds() { return partIds; }
+    public void setPartIds(List<String> partIds) { this.partIds = partIds; }
 }

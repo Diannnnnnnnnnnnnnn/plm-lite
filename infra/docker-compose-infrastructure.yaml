@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Redis Service
+  # ==========================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: plm-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass plm_redis_password
+    volumes:
+      - redis-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: plm-redis-commander
+    environment:
+      - REDIS_HOSTS=local:plm-redis:6379:0:plm_redis_password
+    ports:
+      - "8085:8081"
+    networks:
+      - plm-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # ==========================================
+  # MinIO Object Storage
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    container_name: plm-minio
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console UI
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================
+  # MinIO Bucket Initialization
+  # ==========================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: plm-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to be ready...';
+      sleep 5;
+      /usr/bin/mc alias set plmminio http://minio:9000 minio password;
+      /usr/bin/mc mb plmminio/plm-documents --ignore-existing;
+      echo '✅ Bucket plm-documents created successfully';
+      exit 0;
+      "
+    networks:
+      - plm-network
+
+  # ==========================================
+  # Neo4j Graph Database
+  # ==========================================
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: plm-neo4j
+    ports:
+      - "7474:7474"   # HTTP Browser UI
+      - "7687:7687"   # Bolt protocol
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=2G
+      - NEO4J_dbms_memory_pagecache_size=512m
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-import:/var/lib/neo4j/import
+      - neo4j-plugins:/plugins
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
+  neo4j-data:
+    driver: local
+  neo4j-logs:
+    driver: local
+  neo4j-import:
+    driver: local
+  neo4j-plugins:
+    driver: local
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  plm-network:
+    driver: bridge
+

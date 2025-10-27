@@ -42,6 +42,13 @@ public class Document {
     private String fileKey;
     private String bomId;  // Related BOM ID
     
+    // File metadata fields
+    private String originalFilename;  // Original filename from user
+    private String contentType;       // MIME type
+    private Long fileSize;            // File size in bytes
+    private String storageLocation;   // "MINIO" or "LOCAL"
+    private LocalDateTime fileUploadedAt;
+    
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean isActive = true;  // Flag to indicate if this is the current/active version
 
@@ -157,6 +164,46 @@ public class Document {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
+
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    public Long getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(Long fileSize) {
+        this.fileSize = fileSize;
+    }
+
+    public String getStorageLocation() {
+        return storageLocation;
+    }
+
+    public void setStorageLocation(String storageLocation) {
+        this.storageLocation = storageLocation;
+    }
+
+    public LocalDateTime getFileUploadedAt() {
+        return fileUploadedAt;
+    }
+
+    public void setFileUploadedAt(LocalDateTime fileUploadedAt) {
+        this.fileUploadedAt = fileUploadedAt;
     }
 
     @Override

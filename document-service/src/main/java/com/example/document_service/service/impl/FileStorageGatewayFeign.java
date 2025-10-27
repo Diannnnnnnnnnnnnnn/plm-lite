@@ -1,5 +1,7 @@
 package com.example.document_service.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -8,6 +10,8 @@ import com.example.document_service.service.gateway.FileStorageGateway;
 
 @Component
 public class FileStorageGatewayFeign implements FileStorageGateway {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileStorageGatewayFeign.class);
 
     private final MinIOFileStorageService minIOFileStorageService;
     private final LocalFileStorageService localFileStorageService;
@@ -38,19 +42,19 @@ public class FileStorageGatewayFeign implements FileStorageGateway {
         }
 
         String filename = documentId + "_" + originalFilename;
-        System.out.println("INFO: Processing upload with filename: " + filename);
+        logger.info("Processing file upload - Filename: {}", filename);
 
         // Try MinIO first
         String savedFilename = minIOFileStorageService.saveFile(filename, file);
         if (!"error-saving-file".equals(savedFilename)) {
-            System.out.println("INFO: File uploaded to MinIO storage: " + savedFilename);
+            logger.info("File uploaded to MinIO storage: {}", savedFilename);
             return savedFilename;
         }
 
         // Fallback to local storage
-        System.out.println("WARN: MinIO failed, falling back to local storage");
+        logger.warn("MinIO failed, falling back to local storage for: {}", filename);
         savedFilename = localFileStorageService.saveFile(filename, file);
-        System.out.println("INFO: File uploaded to local storage: " + savedFilename);
+        logger.info("File uploaded to local storage: {}", savedFilename);
         return savedFilename;
     }
 
@@ -60,21 +64,73 @@ public class FileStorageGatewayFeign implements FileStorageGateway {
         try {
             byte[] data = minIOFileStorageService.getFile(fileKey);
             if (data.length > 0) {
-                System.out.println("INFO: File downloaded from MinIO storage: " + fileKey);
+                logger.info("File downloaded from MinIO storage: {}", fileKey);
                 return data;
             }
         } catch (Exception e) {
-            System.out.println("WARN: MinIO download failed: " + e.getMessage());
+            logger.warn("MinIO download failed: {}", e.getMessage());
         }
 
         // Fallback to local storage
-        System.out.println("WARN: MinIO failed, trying local storage for: " + fileKey);
+        logger.warn("Trying local storage for file: {}", fileKey);
         byte[] data = localFileStorageService.getFile(fileKey);
         if (data.length > 0) {
-            System.out.println("INFO: File downloaded from local storage: " + fileKey);
+            logger.info("File downloaded from local storage: {}", fileKey);
         } else {
-            System.out.println("ERROR: File not found in local storage: " + fileKey);
+            logger.error("File not found in any storage: {}", fileKey);
         }
         return data;
+    }
+
+    @Override
+    public boolean delete(String fileKey) {
+        logger.info("Attempting to delete file: {}", fileKey);
+        
+        // Try MinIO first
+        boolean deletedFromMinio = minIOFileStorageService.deleteFile(fileKey);
+        if (deletedFromMinio) {
+            logger.info("File deleted from MinIO storage: {}", fileKey);
+            return true;
+        }
+
+        // Fallback to local storage
+        logger.warn("Trying to delete from local storage: {}", fileKey);
+        boolean deletedFromLocal = localFileStorageService.deleteFile(fileKey);
+        if (deletedFromLocal) {
+            logger.info("File deleted from local storage: {}", fileKey);
+            return true;
+        }
+
+        logger.error("Failed to delete file from any storage: {}", fileKey);
+        return false;
+    }
+
+    @Override
+    public boolean exists(String fileKey) {
+        // Check MinIO first
+        if (minIOFileStorageService.fileExists(fileKey)) {
+            logger.debug("File exists in MinIO: {}", fileKey);
+            return true;
+        }
+
+        // Check local storage
+        boolean existsInLocal = localFileStorageService.fileExists(fileKey);
+        logger.debug("File {} in local storage: {}", existsInLocal ? "exists" : "does not exist", fileKey);
+        return existsInLocal;
+    }
+
+    @Override
+    public long getFileSize(String fileKey) {
+        // Try MinIO first
+        long size = minIOFileStorageService.getFileSize(fileKey);
+        if (size > 0) {
+            logger.debug("File size from MinIO: {} bytes for {}", size, fileKey);
+            return size;
+        }
+
+        // Try local storage
+        size = localFileStorageService.getFileSize(fileKey);
+        logger.debug("File size from local storage: {} bytes for {}", size, fileKey);
+        return size;
     }
 }

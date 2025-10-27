@@ -35,7 +35,11 @@ import {
   Menu,
   Tooltip,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  DialogContentText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -52,192 +56,14 @@ import TreeView from './TreeView';
 import bomService from '../../services/bomService';
 import documentService from '../../services/documentService';
 
-const mockBOMHierarchy = [
-  {
-    id: 'BOM-001',
-    documentId: 'DOC-001',
-    description: 'Electric Motor Assembly',
-    creator: 'John Doe',
-    stage: 'PRODUCTION',
-    status: 'ACTIVE',
-    createTime: '2024-01-15T08:00:00',
-    updateTime: '2024-01-15T14:30:00',
-    items: [
-      { id: '1', partNumber: 'MOTOR-001', description: 'AC Motor 1HP', quantity: 1.0, unit: 'EA', reference: 'REF-001' },
-      { id: '2', partNumber: 'BOLT-M6-20', description: 'M6x20 Hex Bolt', quantity: 8.0, unit: 'EA', reference: 'REF-002' },
-      { id: '3', partNumber: 'GASKET-001', description: 'Motor Housing Gasket', quantity: 1.0, unit: 'EA', reference: 'REF-003' }
-    ],
-    children: [
-      {
-        id: 'BOM-001-1',
-        documentId: 'DOC-002',
-        description: 'Motor Housing',
-        creator: 'John Doe',
-        stage: 'PRODUCTION',
-        status: 'ACTIVE',
-        createTime: '2024-01-15T08:00:00',
-        updateTime: '2024-01-15T14:30:00',
-        items: [
-          { id: '7', partNumber: 'HOUSING-001', description: 'Aluminum Housing', quantity: 1.0, unit: 'EA', reference: 'REF-007' },
-          { id: '8', partNumber: 'BEARING-001', description: 'Ball Bearing', quantity: 2.0, unit: 'EA', reference: 'REF-008' }
-        ],
-        children: [
-          {
-            id: 'BOM-001-1-1',
-            documentId: 'DOC-003',
-            description: 'Housing Cover',
-            creator: 'John Doe',
-            stage: 'PRODUCTION',
-            status: 'ACTIVE',
-            createTime: '2024-01-15T08:00:00',
-            updateTime: '2024-01-15T14:30:00',
-            items: [
-              { id: '9', partNumber: 'COVER-001', description: 'Aluminum Cover', quantity: 1.0, unit: 'EA', reference: 'REF-009' }
-            ],
-            children: []
-          }
-        ]
-      },
-      {
-        id: 'BOM-001-2',
-        documentId: 'DOC-004',
-        description: 'Electrical Components',
-        creator: 'Jane Smith',
-        stage: 'PRODUCTION',
-        status: 'ACTIVE',
-        createTime: '2024-01-15T08:00:00',
-        updateTime: '2024-01-15T14:30:00',
-        items: [
-          { id: '10', partNumber: 'WIRE-001', description: 'Copper Wire 12AWG', quantity: 10.0, unit: 'M', reference: 'REF-010' },
-          { id: '11', partNumber: 'CONNECTOR-001', description: 'Terminal Connector', quantity: 6.0, unit: 'EA', reference: 'REF-011' }
-        ],
-        children: []
-      }
-    ]
-  },
-  {
-    id: 'BOM-002',
-    documentId: 'DOC-005',
-    description: 'Control Panel Assembly',
-    creator: 'Jane Smith',
-    stage: 'DESIGN',
-    status: 'DRAFT',
-    createTime: '2024-01-14T08:00:00',
-    updateTime: '2024-01-14T14:30:00',
-    items: [
-      { id: '4', partNumber: 'PANEL-001', description: 'Control Panel Housing', quantity: 1.0, unit: 'EA', reference: 'REF-004' },
-      { id: '5', partNumber: 'SWITCH-001', description: 'Toggle Switch', quantity: 3.0, unit: 'EA', reference: 'REF-005' },
-      { id: '6', partNumber: 'LED-RED', description: 'Red LED Indicator', quantity: 2.0, unit: 'EA', reference: 'REF-006' }
-    ],
-    children: [
-      {
-        id: 'BOM-002-1',
-        documentId: 'DOC-006',
-        description: 'Control Electronics',
-        creator: 'Jane Smith',
-        stage: 'DESIGN',
-        status: 'DRAFT',
-        createTime: '2024-01-14T08:00:00',
-        updateTime: '2024-01-14T14:30:00',
-        items: [
-          { id: '12', partNumber: 'PCB-001', description: 'Control PCB', quantity: 1.0, unit: 'EA', reference: 'REF-012' },
-          { id: '13', partNumber: 'IC-001', description: 'Microcontroller', quantity: 1.0, unit: 'EA', reference: 'REF-013' }
-        ],
-        children: []
-      }
-    ]
-  }
-];
-
 const getStatusColor = (status) => {
   switch (status) {
-    case 'ACTIVE': return 'success';
-    case 'DRAFT': return 'warning';
+    case 'ACTIVE': case 'RELEASED': case 'APPROVED': return 'success';
+    case 'DRAFT': case 'IN_WORK': return 'warning';
     case 'OBSOLETE': return 'error';
+    case 'IN_REVIEW': case 'IN_TECHNICAL_REVIEW': return 'info';
     default: return 'default';
   }
-};
-
-// Mock related documents data
-const relatedDocuments = {
-  'BOM-001': [
-    {
-      id: 'DOC-001',
-      title: 'Motor Assembly Specifications.pdf',
-      status: 'APPROVED',
-      stage: 'PRODUCTION',
-      revision: 2,
-      version: 1,
-      createTime: '2024-01-15T08:00:00',
-      creator: 'John Doe'
-    },
-    {
-      id: 'DOC-003',
-      title: 'Assembly Instructions.pdf',
-      status: 'ACTIVE',
-      stage: 'PRODUCTION',
-      revision: 1,
-      version: 3,
-      createTime: '2024-01-14T10:30:00',
-      creator: 'Jane Smith'
-    },
-    {
-      id: 'DOC-005',
-      title: 'Quality Control Checklist.docx',
-      status: 'DRAFT',
-      stage: 'DEVELOPMENT',
-      revision: 1,
-      version: 0,
-      createTime: '2024-01-16T14:15:00',
-      creator: 'Mike Johnson'
-    }
-  ],
-  'BOM-002': [
-    {
-      id: 'DOC-002',
-      title: 'Control Panel Design.dwg',
-      status: 'DRAFT',
-      stage: 'DESIGN',
-      revision: 1,
-      version: 2,
-      createTime: '2024-01-13T09:20:00',
-      creator: 'Jane Smith'
-    },
-    {
-      id: 'DOC-004',
-      title: 'Electrical Schematic.pdf',
-      status: 'IN_REVIEW',
-      stage: 'DESIGN',
-      revision: 1,
-      version: 1,
-      createTime: '2024-01-15T16:45:00',
-      creator: 'Bob Wilson'
-    }
-  ],
-  'BOM-001-1': [
-    {
-      id: 'DOC-006',
-      title: 'Housing Material Specs.pdf',
-      status: 'APPROVED',
-      stage: 'PRODUCTION',
-      revision: 1,
-      version: 0,
-      createTime: '2024-01-12T11:30:00',
-      creator: 'John Doe'
-    }
-  ],
-  'BOM-001-1-1': [
-    {
-      id: 'DOC-007',
-      title: 'Cover Manufacturing Guide.pdf',
-      status: 'ACTIVE',
-      stage: 'PRODUCTION',
-      revision: 1,
-      version: 1,
-      createTime: '2024-01-11T13:20:00',
-      creator: 'Sarah Miller'
-    }
-  ]
 };
 
 export default function BOMManager() {
@@ -251,82 +77,99 @@ export default function BOMManager() {
   const [detailsTab, setDetailsTab] = useState(0);
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedParentBOM, setSelectedParentBOM] = useState(null);
-  const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
+  const [childPartsDialogOpen, setChildPartsDialogOpen] = useState(false);
   const [bomDocuments, setBomDocuments] = useState({});  // Map of bomId -> documents array
-  const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
-  const [newItem, setNewItem] = useState({
-    partNumber: '',
-    description: '',
-    quantity: 1,
-    unit: 'EA',
-    reference: ''
-  });
+  const [availableParts, setAvailableParts] = useState([]);
+  const [selectedChildPart, setSelectedChildPart] = useState('');
+  const [childPartQuantity, setChildPartQuantity] = useState(1);
 
-  // Load BOMs from API on component mount
+  // Load Parts from API on component mount
   useEffect(() => {
-    const loadBOMs = async () => {
+    const loadParts = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const bomsData = await bomService.getAllBoms();
-        console.log('Loaded BOMs from API:', bomsData);
-        // Build hierarchy from flat BOM list
-        const bomHierarchy = buildBOMHierarchy(bomsData);
-        setBOMs(bomHierarchy);
+        // Load all parts (which are the new BOMs)
+        const partsData = await bomService.getAllParts();
+        console.log('Loaded Parts from API:', partsData);
+        // Parts already have hierarchy via childUsages, build tree
+        const partHierarchy = buildPartHierarchy(partsData);
+        setBOMs(partHierarchy);
       } catch (error) {
-        console.error('Error loading BOMs:', error);
+        console.error('Error loading Parts:', error);
+        setError('Failed to load parts: ' + (error.response?.data?.message || error.message));
+        setSnackbarMessage('Failed to load parts');
+        setSnackbarOpen(true);
+      } finally {
+        setLoading(false);
       }
     };
-    loadBOMs();
+    loadParts();
   }, []);
 
-  // Helper function to build hierarchy from flat BOM list
-  const buildBOMHierarchy = (flatBOMs) => {
-    const bomMap = {};
-    const rootBOMs = [];
-
-    // First pass: create a map of all BOMs with empty children arrays
-    flatBOMs.forEach(bom => {
-      bomMap[bom.id] = { ...bom, children: [] };
+  // Helper function to build hierarchy from Parts
+  const buildPartHierarchy = (parts) => {
+    // Create a map of all parts by ID for quick lookup
+    const partMap = {};
+    parts.forEach(part => {
+      partMap[part.id] = {
+        ...part,
+        documentId: part.id,
+        description: part.title,
+        children: []
+      };
     });
 
-    // Second pass: build the hierarchy
-    flatBOMs.forEach(bom => {
-      if (bom.parentId) {
-        // This is a child BOM, add it to its parent's children
-        if (bomMap[bom.parentId]) {
-          bomMap[bom.parentId].children.push(bomMap[bom.id]);
-        }
-      } else {
-        // This is a root BOM
-        rootBOMs.push(bomMap[bom.id]);
+    // Track which parts are children (to filter out from root level)
+    const childPartIds = new Set();
+    
+    // Build relationships from childUsages
+    parts.forEach(part => {
+      if (part.childUsages && part.childUsages.length > 0) {
+        part.childUsages.forEach(usage => {
+          const childPart = partMap[usage.childPartId];
+          if (childPart && partMap[part.id]) {
+            // Add child with usage information
+            partMap[part.id].children.push({
+              ...childPart,
+              quantity: usage.quantity,
+              usageId: usage.id
+            });
+            childPartIds.add(usage.childPartId);
+          }
+        });
       }
     });
 
-    return rootBOMs;
+    // Return only root-level parts (those not used as children)
+    return parts
+      .filter(part => !childPartIds.has(part.id))
+      .map(part => partMap[part.id]);
   };
 
-  // Function to get related documents for a BOM
-  const getRelatedDocuments = (bomId) => {
-    return bomDocuments[bomId] || [];
+  // Helper function to refresh parts data
+  const refreshParts = async () => {
+    try {
+      setLoading(true);
+      const updatedParts = await bomService.getAllParts();
+      const partHierarchy = buildPartHierarchy(updatedParts);
+      setBOMs(partHierarchy);
+      return partHierarchy;
+    } catch (error) {
+      console.error('Error refreshing parts:', error);
+      setSnackbarMessage('Failed to refresh parts');
+      setSnackbarOpen(true);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Helper function to recursively add child BOM
-  const addChildBOM = (bomList, parentId, newBOM) => {
-    return bomList.map(bom => {
-      if (bom.id === parentId) {
-        return {
-          ...bom,
-          children: [...(bom.children || []), newBOM]
-        };
-      } else if (bom.children && bom.children.length > 0) {
-        return {
-          ...bom,
-          children: addChildBOM(bom.children, parentId, newBOM)
-        };
-      }
-      return bom;
-    });
+  // Function to get related documents for a Part
+  const getRelatedDocuments = (partId) => {
+    return bomDocuments[partId] || [];
   };
 
   // Helper function to get flattened list of all BOMs for parent selection
@@ -343,13 +186,22 @@ export default function BOMManager() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [newBOM, setNewBOM] = useState({
-    documentId: '',
+    title: '',
     description: '',
     creator: 'Current User',
-    stage: 'CONCEPTUAL_DESIGN',
-    status: 'DRAFT',
-    parentBOMId: null
+    stage: 'DETAILED_DESIGN',
+    status: 'IN_WORK',
+    level: 'ASSEMBLY',
+    parentPartId: null
   });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingBOM, setEditingBOM] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingBOM, setDeletingBOM] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     let filtered = boms;
@@ -381,36 +233,31 @@ export default function BOMManager() {
     setFilteredBOMs(filtered);
   }, [boms, filterStatus, filterStage, searchTerm]);
 
-  // Load documents for a specific BOM
-  const loadBOMDocuments = async (bomId) => {
-    if (!bomId) return;
-
-    // Check if documents are already loaded
-    if (bomDocuments[bomId]) return;
-
-    try {
-      setLoadingDocuments(true);
-      const documents = await documentService.getDocumentsByBomId(bomId);
-      setBomDocuments(prev => ({
-        ...prev,
-        [bomId]: documents
-      }));
-    } catch (error) {
-      console.error('Error loading documents for BOM:', error);
-      setBomDocuments(prev => ({
-        ...prev,
-        [bomId]: []
-      }));
-    } finally {
-      setLoadingDocuments(false);
-    }
-  };
-
-  // Load documents when selectedNode or detailsTab changes
+  // Load documents for a specific Part when needed
   useEffect(() => {
-    if (selectedNode && detailsTab === 1) {
-      loadBOMDocuments(selectedNode.id);
-    }
+    const loadPartDocuments = async () => {
+      if (selectedNode && detailsTab === 1 && selectedNode.id) {
+        // Check if documents are already loaded
+        if (bomDocuments[selectedNode.id]) return;
+
+        try {
+          const documents = await documentService.getDocumentsByBomId(selectedNode.id);
+          setBomDocuments(prev => ({
+            ...prev,
+            [selectedNode.id]: documents
+          }));
+        } catch (error) {
+          console.error('Error loading documents for Part:', error);
+          setBomDocuments(prev => ({
+            ...prev,
+            [selectedNode.id]: []
+          }));
+        }
+      }
+    };
+    
+    loadPartDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNode, detailsTab]);
 
   const handleNodeSelect = (node) => {
@@ -427,16 +274,86 @@ export default function BOMManager() {
     setSelectedParentBOM(parentNode);
     setNewBOM({
       ...newBOM,
-      parentBOMId: parentNode.id
+      parentPartId: parentNode.id
     });
     setCreateDialogOpen(true);
     handleContextMenuClose();
   };
 
-  const handleAddItems = (bomNode) => {
+  const handleAddChildPart = async (bomNode) => {
     setSelectedNode(bomNode);
-    setItemsDialogOpen(true);
+    // Load all available parts for selection
+    try {
+      const allParts = await bomService.getAllParts();
+      // Filter out the current part and its children to prevent circular references
+      const filtered = allParts.filter(p => p.id !== bomNode.id);
+      setAvailableParts(filtered);
+    } catch (error) {
+      console.error('Error loading parts:', error);
+      setSnackbarMessage('Failed to load available parts');
+      setSnackbarOpen(true);
+    }
+    setChildPartsDialogOpen(true);
     handleContextMenuClose();
+  };
+
+  const handleAddChildPartSubmit = async () => {
+    try {
+      if (!selectedChildPart) {
+        setSnackbarMessage('Please select a child part');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      setLoading(true);
+      await bomService.addPartUsage(selectedNode.id, selectedChildPart, childPartQuantity);
+      await refreshParts();
+
+      // Update selected node
+      const updatedPart = await bomService.getPartById(selectedNode.id);
+      setSelectedNode({
+        ...updatedPart,
+        documentId: updatedPart.id,
+        description: updatedPart.title
+      });
+
+      setChildPartsDialogOpen(false);
+      setSelectedChildPart('');
+      setChildPartQuantity(1);
+      setSnackbarMessage('Child part added successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error adding child part:', error);
+      setSnackbarMessage('Failed to add child part: ' + (error.response?.data?.message || error.message));
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveChildPart = async (childPartId) => {
+    try {
+      setLoading(true);
+      await bomService.removePartUsage(selectedNode.id, childPartId);
+      await refreshParts();
+
+      // Update selected node
+      const updatedPart = await bomService.getPartById(selectedNode.id);
+      setSelectedNode({
+        ...updatedPart,
+        documentId: updatedPart.id,
+        description: updatedPart.title
+      });
+
+      setSnackbarMessage('Child part removed successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error removing child part:', error);
+      setSnackbarMessage('Failed to remove child part: ' + (error.response?.data?.message || error.message));
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDocumentClick = (document) => {
@@ -446,36 +363,143 @@ export default function BOMManager() {
 
   const handleCreateBOM = async () => {
     try {
-      const bomData = {
-        documentId: newBOM.documentId,
+      setLoading(true);
+      
+      // Validate required fields
+      if (!newBOM.title) {
+        setSnackbarMessage('Title is required');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      // Create Part (new BOM system)
+      const partData = {
+        title: newBOM.title,
         description: newBOM.description,
         creator: newBOM.creator,
         stage: newBOM.stage,
-        parentId: selectedParentBOM?.id || null,
-        items: []
+        status: newBOM.status,
+        level: newBOM.level
       };
 
-      const createdBOM = await bomService.createBom(bomData);
-      console.log('BOM created successfully:', createdBOM);
+      const createdPart = await bomService.createPart(partData);
+      console.log('Part created successfully:', createdPart);
 
-      // Refresh the BOM list
-      const updatedBOMs = await bomService.getAllBoms();
-      const bomHierarchy = buildBOMHierarchy(updatedBOMs);
-      setBOMs(bomHierarchy);
+      // If there's a parent, create the relationship
+      if (selectedParentBOM && selectedParentBOM.id) {
+        await bomService.addPartUsage(selectedParentBOM.id, createdPart.id, 1);
+        console.log('Part relationship created');
+      }
+
+      // Refresh the Part list
+      await refreshParts();
 
       setNewBOM({
-        documentId: '',
+        title: '',
         description: '',
         creator: 'Current User',
-        stage: 'CONCEPTUAL_DESIGN',
-        status: 'DRAFT',
-        parentBOMId: null
+        stage: 'DETAILED_DESIGN',
+        status: 'IN_WORK',
+        level: 'ASSEMBLY',
+        parentPartId: null
       });
       setSelectedParentBOM(null);
       setCreateDialogOpen(false);
+      setSnackbarMessage('Part created successfully!');
+      setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error creating BOM:', error);
-      alert('Failed to create BOM: ' + (error.response?.data?.message || error.message));
+      console.error('Error creating Part:', error);
+      setSnackbarMessage('Failed to create Part: ' + (error.response?.data?.message || error.message));
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditBOM = (bom) => {
+    setEditingBOM({
+      id: bom.id,
+      title: bom.title || bom.description,
+      description: bom.description,
+      stage: bom.stage,
+      status: bom.status,
+      level: bom.level,
+      creator: bom.creator
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateBOM = async () => {
+    try {
+      setLoading(true);
+      
+      if (!editingBOM.title) {
+        setSnackbarMessage('Title is required');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      const updateData = {
+        title: editingBOM.title,
+        description: editingBOM.description,
+        stage: editingBOM.stage,
+        status: editingBOM.status,
+        level: editingBOM.level,
+        creator: editingBOM.creator
+      };
+
+      await bomService.updatePart(editingBOM.id, updateData);
+      await refreshParts();
+
+      // Update selected node if it's the one being edited
+      if (selectedNode && selectedNode.id === editingBOM.id) {
+        const updatedPart = await bomService.getPartById(editingBOM.id);
+        setSelectedNode({
+          ...updatedPart,
+          documentId: updatedPart.id,
+          description: updatedPart.title
+        });
+      }
+
+      setEditDialogOpen(false);
+      setEditingBOM(null);
+      setSnackbarMessage('Part updated successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error updating Part:', error);
+      setSnackbarMessage('Failed to update Part: ' + (error.response?.data?.message || error.message));
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBOM = (bom) => {
+    setDeletingBOM(bom);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setLoading(true);
+      await bomService.deletePart(deletingBOM.id);
+      await refreshParts();
+
+      // Clear selected node if it's the one being deleted
+      if (selectedNode && selectedNode.id === deletingBOM.id) {
+        setSelectedNode(null);
+      }
+
+      setDeleteDialogOpen(false);
+      setDeletingBOM(null);
+      setSnackbarMessage('Part deleted successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error deleting Part:', error);
+      setSnackbarMessage('Failed to delete Part: ' + (error.response?.data?.message || error.message));
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -609,8 +633,8 @@ export default function BOMManager() {
                     <Box display="flex" gap={1}>
                       <IconButton
                         size="small"
-                        onClick={() => handleAddItems(selectedNode)}
-                        title="Add Items"
+                        onClick={() => handleAddChildPart(selectedNode)}
+                        title="Add Child Part"
                       >
                         <AddIcon />
                       </IconButton>
@@ -621,10 +645,18 @@ export default function BOMManager() {
                       >
                         <TreeIcon />
                       </IconButton>
-                      <IconButton size="small">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleEditBOM(selectedNode)}
+                        title="Edit Part"
+                      >
                         <EditIcon />
                       </IconButton>
-                      <IconButton size="small">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDeleteBOM(selectedNode)}
+                        title="Delete Part"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </Box>
@@ -674,7 +706,7 @@ export default function BOMManager() {
                       label={
                         <Box display="flex" alignItems="center" gap={1}>
                           <TreeIcon />
-                          Items
+                          Child Parts ({selectedNode.children?.length || 0})
                         </Box>
                       }
                     />
@@ -690,27 +722,44 @@ export default function BOMManager() {
 
                   {/* Tab Content */}
                   {detailsTab === 0 && (
-                    // Items Tab
-                    selectedNode.items && selectedNode.items.length > 0 ? (
+                    // Child Parts Tab
+                    selectedNode.children && selectedNode.children.length > 0 ? (
                       <TableContainer component={Paper} variant="outlined">
                         <Table size="small">
                           <TableHead>
                             <TableRow>
-                              <TableCell>Part Number</TableCell>
+                              <TableCell>Part ID</TableCell>
+                              <TableCell>Title</TableCell>
                               <TableCell>Description</TableCell>
                               <TableCell>Quantity</TableCell>
-                              <TableCell>Unit</TableCell>
-                              <TableCell>Reference</TableCell>
+                              <TableCell>Status</TableCell>
+                              <TableCell>Actions</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {selectedNode.items.map((item) => (
-                              <TableRow key={item.id}>
-                                <TableCell>{item.partNumber}</TableCell>
-                                <TableCell>{item.description}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{item.unit}</TableCell>
-                                <TableCell>{item.reference}</TableCell>
+                            {selectedNode.children.map((child) => (
+                              <TableRow key={child.id}>
+                                <TableCell>{child.id}</TableCell>
+                                <TableCell>{child.title || child.description}</TableCell>
+                                <TableCell>{child.description}</TableCell>
+                                <TableCell>{child.quantity || 1}</TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={child.status}
+                                    color={getStatusColor(child.status)}
+                                    size="small"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleRemoveChildPart(child.id)}
+                                    title="Remove"
+                                    color="error"
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -729,8 +778,16 @@ export default function BOMManager() {
                       >
                         <TreeIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
                         <Typography variant="body2" textAlign="center">
-                          No items defined for this BOM.
+                          No child parts defined for this part.
                         </Typography>
+                        <Button
+                          variant="outlined"
+                          startIcon={<AddIcon />}
+                          onClick={() => handleAddChildPart(selectedNode)}
+                          sx={{ mt: 2 }}
+                        >
+                          Add Child Part
+                        </Button>
                       </Box>
                     )
                   )}
@@ -854,7 +911,7 @@ export default function BOMManager() {
                     />
                   </Box>
                   <Typography variant="body2" color="textSecondary" paragraph>
-                    Items: {bom.items?.length || 0}
+                    Child Parts: {bom.children?.length || 0}
                   </Typography>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="body2" color="textSecondary">
@@ -908,11 +965,12 @@ export default function BOMManager() {
             )}
             <TextField
               fullWidth
-              label="BOM ID"
+              label="Title"
               variant="outlined"
-              value={newBOM.documentId}
-              onChange={(e) => setNewBOM({...newBOM, documentId: e.target.value})}
+              value={newBOM.title}
+              onChange={(e) => setNewBOM({...newBOM, title: e.target.value})}
               margin="normal"
+              required
             />
             <TextField
               fullWidth
@@ -921,6 +979,8 @@ export default function BOMManager() {
               value={newBOM.description}
               onChange={(e) => setNewBOM({...newBOM, description: e.target.value})}
               margin="normal"
+              multiline
+              rows={2}
             />
             <TextField
               fullWidth
@@ -929,7 +989,20 @@ export default function BOMManager() {
               value={newBOM.creator}
               onChange={(e) => setNewBOM({...newBOM, creator: e.target.value})}
               margin="normal"
+              required
             />
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel>Level</InputLabel>
+              <Select
+                value={newBOM.level}
+                onChange={(e) => setNewBOM({...newBOM, level: e.target.value})}
+                label="Level"
+              >
+                <MenuItem value="ASSEMBLY">Assembly</MenuItem>
+                <MenuItem value="PART">Part</MenuItem>
+                <MenuItem value="COMPONENT">Component</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl fullWidth variant="outlined" margin="normal">
               <InputLabel>Stage</InputLabel>
               <Select
@@ -952,8 +1025,12 @@ export default function BOMManager() {
                 onChange={(e) => setNewBOM({...newBOM, status: e.target.value})}
                 label="Status"
               >
+                <MenuItem value="IN_WORK">In Work</MenuItem>
                 <MenuItem value="DRAFT">Draft</MenuItem>
-                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="IN_REVIEW">In Review</MenuItem>
+                <MenuItem value="IN_TECHNICAL_REVIEW">In Technical Review</MenuItem>
+                <MenuItem value="RELEASED">Released</MenuItem>
+                <MenuItem value="APPROVED">Approved</MenuItem>
                 <MenuItem value="OBSOLETE">Obsolete</MenuItem>
               </Select>
             </FormControl>
@@ -1027,141 +1104,58 @@ export default function BOMManager() {
           <ListItemIcon>
             <TreeIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Add Child BOM</ListItemText>
+          <ListItemText>Add Child Part (New)</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => handleAddItems(contextMenu?.node)}>
+        <MenuItem onClick={() => handleAddChildPart(contextMenu?.node)}>
           <ListItemIcon>
             <AddIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Add Items</ListItemText>
+          <ListItemText>Add Child Part (Existing)</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* Add Items Dialog */}
-      <Dialog open={itemsDialogOpen} onClose={() => setItemsDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add Items to {selectedNode?.description}</DialogTitle>
+      {/* Add Child Parts Dialog */}
+      <Dialog open={childPartsDialogOpen} onClose={() => setChildPartsDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Child Part to {selectedNode?.description}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Part Number"
-                  variant="outlined"
-                  value={newItem.partNumber}
-                  onChange={(e) => setNewItem({...newItem, partNumber: e.target.value})}
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Reference"
-                  variant="outlined"
-                  value={newItem.reference}
-                  onChange={(e) => setNewItem({...newItem, reference: e.target.value})}
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  variant="outlined"
-                  value={newItem.description}
-                  onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Quantity"
-                  variant="outlined"
-                  type="number"
-                  value={newItem.quantity}
-                  onChange={(e) => setNewItem({...newItem, quantity: parseFloat(e.target.value) || 1})}
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth variant="outlined" margin="normal">
-                  <InputLabel>Unit</InputLabel>
-                  <Select
-                    value={newItem.unit}
-                    onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
-                    label="Unit"
-                  >
-                    <MenuItem value="EA">Each (EA)</MenuItem>
-                    <MenuItem value="M">Meters (M)</MenuItem>
-                    <MenuItem value="KG">Kilograms (KG)</MenuItem>
-                    <MenuItem value="L">Liters (L)</MenuItem>
-                    <MenuItem value="SET">Set</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel>Select Child Part</InputLabel>
+              <Select
+                value={selectedChildPart}
+                onChange={(e) => setSelectedChildPart(e.target.value)}
+                label="Select Child Part"
+              >
+                <MenuItem value="">
+                  <em>Select a part</em>
+                </MenuItem>
+                {availableParts.map((part) => (
+                  <MenuItem key={part.id} value={part.id}>
+                    {part.title} ({part.id}) - {part.status}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Quantity"
+              variant="outlined"
+              type="number"
+              value={childPartQuantity}
+              onChange={(e) => setChildPartQuantity(parseInt(e.target.value) || 1)}
+              margin="normal"
+              inputProps={{ min: 1 }}
+            />
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+              Select an existing part to add as a child component of this part.
+            </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setItemsDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={async () => {
-            try {
-              // Validate input
-              if (!newItem.partNumber || !newItem.description) {
-                alert('Part Number and Description are required');
-                return;
-              }
-
-              // Get current BOM data
-              const currentItems = selectedNode.items || [];
-
-              // Add new item to existing items
-              const updatedItems = [
-                ...currentItems,
-                {
-                  partNumber: newItem.partNumber,
-                  description: newItem.description,
-                  quantity: newItem.quantity,
-                  unit: newItem.unit,
-                  reference: newItem.reference
-                }
-              ];
-
-              // Update BOM with new items
-              const updateData = {
-                description: selectedNode.description,
-                stage: selectedNode.stage,
-                items: updatedItems
-              };
-
-              await bomService.updateBom(selectedNode.id, updateData);
-
-              // Refresh the BOM list
-              const updatedBOMs = await bomService.getAllBoms();
-              const bomHierarchy = buildBOMHierarchy(updatedBOMs);
-              setBOMs(bomHierarchy);
-
-              // Update selected node with new items
-              const updatedNode = updatedBOMs.find(b => b.id === selectedNode.id);
-              if (updatedNode) {
-                setSelectedNode(updatedNode);
-              }
-
-              // Reset form
-              setNewItem({
-                partNumber: '',
-                description: '',
-                quantity: 1,
-                unit: 'EA',
-                reference: ''
-              });
-              setItemsDialogOpen(false);
-            } catch (error) {
-              console.error('Error adding item:', error);
-              alert('Failed to add item: ' + (error.response?.data?.message || error.message));
-            }
-          }}>Add Item</Button>
+          <Button onClick={() => setChildPartsDialogOpen(false)} disabled={loading}>Cancel</Button>
+          <Button variant="contained" onClick={handleAddChildPartSubmit} disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Add Child Part'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1223,6 +1217,144 @@ export default function BOMManager() {
           <Button onClick={() => setDocumentDetailsOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit BOM Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Part</DialogTitle>
+        <DialogContent>
+          {editingBOM && (
+            <Box sx={{ pt: 2 }}>
+              <TextField
+                fullWidth
+                label="Title"
+                variant="outlined"
+                value={editingBOM.title}
+                onChange={(e) => setEditingBOM({...editingBOM, title: e.target.value})}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="Description"
+                variant="outlined"
+                value={editingBOM.description || ''}
+                onChange={(e) => setEditingBOM({...editingBOM, description: e.target.value})}
+                margin="normal"
+                multiline
+                rows={2}
+              />
+              <TextField
+                fullWidth
+                label="Creator"
+                variant="outlined"
+                value={editingBOM.creator}
+                onChange={(e) => setEditingBOM({...editingBOM, creator: e.target.value})}
+                margin="normal"
+                required
+              />
+              <FormControl fullWidth variant="outlined" margin="normal">
+                <InputLabel>Level</InputLabel>
+                <Select
+                  value={editingBOM.level}
+                  onChange={(e) => setEditingBOM({...editingBOM, level: e.target.value})}
+                  label="Level"
+                >
+                  <MenuItem value="ASSEMBLY">Assembly</MenuItem>
+                  <MenuItem value="PART">Part</MenuItem>
+                  <MenuItem value="COMPONENT">Component</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth variant="outlined" margin="normal">
+                <InputLabel>Stage</InputLabel>
+                <Select
+                  value={editingBOM.stage}
+                  onChange={(e) => setEditingBOM({...editingBOM, stage: e.target.value})}
+                  label="Stage"
+                >
+                  <MenuItem value="CONCEPTUAL_DESIGN">Conceptual Design</MenuItem>
+                  <MenuItem value="PRELIMINARY_DESIGN">Preliminary Design</MenuItem>
+                  <MenuItem value="DETAILED_DESIGN">Detailed Design</MenuItem>
+                  <MenuItem value="MANUFACTURING">Manufacturing</MenuItem>
+                  <MenuItem value="IN_SERVICE">In Service</MenuItem>
+                  <MenuItem value="RETIRED">Retired</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth variant="outlined" margin="normal">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={editingBOM.status}
+                  onChange={(e) => setEditingBOM({...editingBOM, status: e.target.value})}
+                  label="Status"
+                >
+                  <MenuItem value="IN_WORK">In Work</MenuItem>
+                  <MenuItem value="DRAFT">Draft</MenuItem>
+                  <MenuItem value="IN_REVIEW">In Review</MenuItem>
+                  <MenuItem value="IN_TECHNICAL_REVIEW">In Technical Review</MenuItem>
+                  <MenuItem value="RELEASED">Released</MenuItem>
+                  <MenuItem value="APPROVED">Approved</MenuItem>
+                  <MenuItem value="OBSOLETE">Obsolete</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} disabled={loading}>Cancel</Button>
+          <Button variant="contained" onClick={handleUpdateBOM} disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Update'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this part: <strong>{deletingBOM?.title || deletingBOM?.description}</strong>?
+            <br /><br />
+            This action cannot be undone. All child relationships will also be removed.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleConfirmDelete} disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={error ? 'error' : 'success'} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Loading overlay */}
+      {loading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            zIndex: 9999
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
     </Box>
   );
 }

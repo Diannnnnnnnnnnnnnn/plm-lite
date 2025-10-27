@@ -43,6 +43,8 @@ Write-Host "`nStarting backend services...`n" -ForegroundColor Cyan
 $rootDir = Get-Location
 
 # Start Backend Services (in order of dependencies)
+Start-Service -Name "Graph Service" -Path "$rootDir\infra\graph-service" -Command "mvn spring-boot:run" -Port 8090
+Start-Sleep -Seconds 5  # Give graph service time to start since other services depend on it
 Start-Service -Name "User Service" -Path "$rootDir\user-service" -Command "mvn spring-boot:run" -Port 8083
 Start-Service -Name "Auth Service" -Path "$rootDir\auth-service" -Command "mvn spring-boot:run" -Port 8110
 Start-Service -Name "BOM Service" -Path "$rootDir\bom-service" -Command "mvn spring-boot:run" -Port 8089
@@ -63,6 +65,7 @@ Write-Host "All services are starting!" -ForegroundColor Green
 Write-Host "========================================`n"
 
 Write-Host "Backend Services:" -ForegroundColor Cyan
+Write-Host "  - Graph Service:         http://localhost:8090"
 Write-Host "  - User Service:          http://localhost:8083"
 Write-Host "  - Auth Service:          http://localhost:8110"
 Write-Host "  - Document Service:      http://localhost:8081"

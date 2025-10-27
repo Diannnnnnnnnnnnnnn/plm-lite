@@ -42,6 +42,13 @@ public class DocumentMapper {
             response.setMaster(masterInfo);
         }
         
+        // Set file metadata
+        response.setOriginalFilename(d.getOriginalFilename());
+        response.setContentType(d.getContentType());
+        response.setFileSize(d.getFileSize());
+        response.setStorageLocation(d.getStorageLocation());
+        response.setFileUploadedAt(d.getFileUploadedAt());
+        
         return response;
     }
 }

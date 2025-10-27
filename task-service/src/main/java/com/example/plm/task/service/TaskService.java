@@ -4,10 +4,8 @@ import com.example.plm.task.client.DocumentServiceClient;
 import com.example.plm.task.dto.CreateTaskRequest;
 import com.example.plm.task.dto.TaskResponse;
 import com.example.plm.task.model.*;
-import com.example.plm.task.model.neo4j.TaskNode;
 import com.example.plm.task.repository.mysql.TaskRepository;
 import com.example.plm.task.repository.mysql.TaskSignoffRepository;
-import com.example.plm.task.repository.neo4j.TaskNodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -28,9 +26,6 @@ public class TaskService {
 
     @Autowired
     private TaskSignoffRepository taskSignoffRepository;
-
-    @Autowired
-    private TaskNodeRepository taskNodeRepository;
 
     @Autowired(required = false)
     private DocumentServiceClient documentServiceClient;
@@ -57,33 +52,6 @@ public class TaskService {
         );
 
         task = taskRepository.save(task);
-
-        TaskNode taskNode = new TaskNode(
-            taskId,
-            request.getTaskName(),
-            request.getTaskDescription(),
-            request.getTaskType().toString(),
-            TaskStatus.PENDING.toString(),
-            request.getAssignedTo(),
-            request.getAssignedBy(),
-            request.getDueDate(),
-            LocalDateTime.now(),
-            request.getPriority(),
-            request.getWorkflowId(),
-            request.getContextType(),
-            request.getContextId()
-        );
-
-        taskNodeRepository.save(taskNode);
-
-        if (request.getWorkflowId() != null) {
-            taskNodeRepository.linkToWorkflow(request.getWorkflowId(), taskId);
-        }
-
-        if (request.getParentTaskId() != null) {
-            taskNodeRepository.createParentChildRelationship(request.getParentTaskId(), taskId);
-        }
-
         return mapToResponse(task);
     }
 
@@ -95,15 +63,6 @@ public class TaskService {
         task.setTaskStatus(newStatus);
         task.setUpdatedAt(LocalDateTime.now());
         task = taskRepository.save(task);
-
-        Optional<TaskNode> taskNode = taskNodeRepository.findById(taskId);
-        if (taskNode.isPresent()) {
-            TaskNode node = taskNode.get();
-            node.setTaskStatus(newStatus.toString());
-            node.setUpdatedAt(LocalDateTime.now());
-            taskNodeRepository.save(node);
-        }
-
         return mapToResponse(task);
     }
 
@@ -288,7 +247,6 @@ class TaskServiceDev {
         task.setTaskStatus(newStatus);
         task.setUpdatedAt(LocalDateTime.now());
         task = taskRepository.save(task);
-
         return mapToResponse(task);
     }
 

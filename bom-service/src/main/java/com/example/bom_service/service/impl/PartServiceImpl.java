@@ -15,6 +15,13 @@ import com.example.bom_service.repository.DocumentPartLinkRepository;
 import com.example.bom_service.service.PartService;
 import com.example.plm.common.model.Stage;
 
+// Graph Service imports
+import com.example.bom_service.client.GraphServiceClient;
+import com.example.bom_service.client.PartSyncDto;
+import com.example.bom_service.client.PartUsageDto;
+import com.example.bom_service.client.PartDocumentLinkDto;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,18 +31,22 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class PartServiceImpl implements PartService {
 
     private final PartRepository partRepository;
     private final PartUsageRepository partUsageRepository;
     private final DocumentPartLinkRepository documentPartLinkRepository;
+    private final GraphServiceClient graphServiceClient;
 
     public PartServiceImpl(PartRepository partRepository, 
                           PartUsageRepository partUsageRepository,
-                          DocumentPartLinkRepository documentPartLinkRepository) {
+                          DocumentPartLinkRepository documentPartLinkRepository,
+                          GraphServiceClient graphServiceClient) {
         this.partRepository = partRepository;
         this.partUsageRepository = partUsageRepository;
         this.documentPartLinkRepository = documentPartLinkRepository;
+        this.graphServiceClient = graphServiceClient;
     }
 
     @Override
@@ -46,11 +57,18 @@ public class PartServiceImpl implements PartService {
         Part part = new Part();
         part.setId(UUID.randomUUID().toString());
         part.setTitle(request.getTitle());
+        part.setDescription(request.getDescription());
         part.setStage(request.getStage());
+        part.setStatus(request.getStatus()); // Will default to IN_WORK in @PrePersist if null
         part.setLevel(request.getLevel());
         part.setCreator(request.getCreator());
         
-        return partRepository.save(part);
+        Part savedPart = partRepository.save(part);
+        
+        // Sync to Neo4j
+        syncPartToGraph(savedPart);
+        
+        return savedPart;
     }
 
     @Override
@@ -97,10 +115,17 @@ public class PartServiceImpl implements PartService {
         List<PartUsage> childUsages = partUsageRepository.findByParentId(id);
         
         if (!parentUsages.isEmpty() || !childUsages.isEmpty()) {
-            throw new ValidationException("Cannot delete part that is used in BOM structures");
+            throw new ValidationException("Cannot delete part that is used in BOM structures. Use soft delete instead.");
         }
         
-        partRepository.delete(part);
+        // Soft delete
+        part.setDeleted(true);
+        part.setDeleteTime(java.time.LocalDateTime.now());
+        partRepository.save(part);
+        log.info("✅ Part {} soft deleted successfully", id);
+        
+        // Note: Could optionally sync delete to Neo4j here
+        // graphServiceClient.deletePart(id);
     }
 
     @Override
@@ -129,7 +154,12 @@ public class PartServiceImpl implements PartService {
         partUsage.setChild(child);
         partUsage.setQuantity(request.getQuantity());
         
-        return partUsageRepository.save(partUsage);
+        PartUsage savedUsage = partUsageRepository.save(partUsage);
+        
+        // Sync to Neo4j
+        syncPartUsageToGraph(savedUsage);
+        
+        return savedUsage;
     }
 
     @Override
@@ -189,7 +219,12 @@ public class PartServiceImpl implements PartService {
         link.setPart(part);
         link.setDocumentId(request.getDocumentId());
         
-        return documentPartLinkRepository.save(link);
+        DocumentPartLink savedLink = documentPartLinkRepository.save(link);
+        
+        // Sync to Neo4j
+        syncPartDocumentLinkToGraph(savedLink);
+        
+        return savedLink;
     }
 
     @Override
@@ -284,5 +319,55 @@ public class PartServiceImpl implements PartService {
         
         response.setChildren(children);
         return response;
+    }
+    
+    // ==========================================
+    // Graph Sync Methods
+    // ==========================================
+    
+    private void syncPartToGraph(Part part) {
+        try {
+            PartSyncDto dto = new PartSyncDto(
+                part.getId(),
+                part.getTitle(),
+                part.getDescription(),
+                part.getStage().name(),
+                part.getStatus() != null ? part.getStatus().name() : "IN_WORK",
+                part.getLevel(),
+                part.getCreator(),
+                part.getCreateTime()
+            );
+            graphServiceClient.syncPart(dto);
+            log.info("✅ Part {} synced to graph successfully", part.getId());
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync part {} to graph: {}", part.getId(), e.getMessage());
+        }
+    }
+    
+    private void syncPartUsageToGraph(PartUsage partUsage) {
+        try {
+            PartUsageDto dto = new PartUsageDto(
+                partUsage.getParent().getId(),
+                partUsage.getChild().getId(),
+                partUsage.getQuantity()
+            );
+            graphServiceClient.syncPartUsage(dto);
+            log.info("✅ Part usage synced to graph successfully");
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync part usage to graph: {}", e.getMessage());
+        }
+    }
+    
+    private void syncPartDocumentLinkToGraph(DocumentPartLink link) {
+        try {
+            PartDocumentLinkDto dto = new PartDocumentLinkDto(
+                link.getPart().getId(),
+                link.getDocumentId()
+            );
+            graphServiceClient.syncPartDocumentLink(dto);
+            log.info("✅ Part-document link synced to graph successfully");
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync part-document link to graph: {}", e.getMessage());
+        }
     }
 }

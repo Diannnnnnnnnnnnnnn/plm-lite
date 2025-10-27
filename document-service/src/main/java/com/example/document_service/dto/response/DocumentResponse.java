@@ -19,6 +19,13 @@ public class DocumentResponse {
     private String creator;
     private LocalDateTime createTime;
     private MasterInfo master;
+    
+    // File metadata fields
+    private String originalFilename;
+    private String contentType;
+    private Long fileSize;
+    private String storageLocation;
+    private LocalDateTime fileUploadedAt;
 
     public DocumentResponse() {}
 
@@ -107,4 +114,20 @@ public class DocumentResponse {
 
     public MasterInfo getMaster() { return master; }
     public void setMaster(MasterInfo master) { this.master = master; }
+    
+    // File metadata getters and setters
+    public String getOriginalFilename() { return originalFilename; }
+    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    
+    public String getContentType() { return contentType; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
+    
+    public Long getFileSize() { return fileSize; }
+    public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+    
+    public String getStorageLocation() { return storageLocation; }
+    public void setStorageLocation(String storageLocation) { this.storageLocation = storageLocation; }
+    
+    public LocalDateTime getFileUploadedAt() { return fileUploadedAt; }
+    public void setFileUploadedAt(LocalDateTime fileUploadedAt) { this.fileUploadedAt = fileUploadedAt; }
 }

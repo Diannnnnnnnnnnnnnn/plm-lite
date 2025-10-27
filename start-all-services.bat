@@ -13,6 +13,11 @@ echo.
 echo Starting backend services...
 echo.
 
+REM Start Graph Service (Port 8090)
+echo Starting Graph Service on port 8090...
+start "Graph Service" cmd /c "cd infra\graph-service && mvn spring-boot:run"
+timeout /t 5 /nobreak > nul
+
 REM Start BOM Service (Port 8089)
 echo Starting BOM Service on port 8089...
 start "BOM Service" cmd /c "cd bom-service && mvn spring-boot:run"
@@ -57,6 +62,7 @@ echo All services are starting!
 echo ========================================
 echo.
 echo Backend Services:
+echo   - Graph Service:         http://localhost:8090
 echo   - Document Service:      http://localhost:8081
 echo   - Task Service:          http://localhost:8082
 echo   - User Service:          http://localhost:8083

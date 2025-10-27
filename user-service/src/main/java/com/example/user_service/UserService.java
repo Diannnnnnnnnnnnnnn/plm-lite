@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.user_service.client.GraphClient;
+import com.example.user_service.client.UserSyncDto;
 
 @Service
 public class UserService {
@@ -44,17 +45,24 @@ public class UserService {
         User savedUser = userRepository.save(user);
 
         // Send to graph service - with graceful failure handling
-        // Temporarily disabled to prevent timeouts
-        /*
-        try {
-            graphClient.createUser(String.valueOf(savedUser.getId()), savedUser.getUsername());
-            System.out.println("INFO: Successfully created user in graph service: " + savedUser.getUsername());
-        } catch (Exception e) {
-            System.out.println("WARN: Failed to create user in graph service, but user saved to database: " + e.getMessage());
-            // Don't throw exception - allow user creation to continue even if graph service fails
+        if (graphClient != null) {
+            try {
+                UserSyncDto syncDto = new UserSyncDto(
+                    String.valueOf(savedUser.getId()),
+                    savedUser.getUsername(),
+                    null, // email - not in User entity
+                    null, // department - not in User entity
+                    savedUser.getRoles() != null && !savedUser.getRoles().isEmpty() 
+                        ? savedUser.getRoles().get(0) : null, // role - first role from list
+                    null // managerId - can be added later if needed
+                );
+                graphClient.syncUser(syncDto);
+                System.out.println("✅ User " + savedUser.getUsername() + " synced to graph successfully");
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to sync user to graph: " + e.getMessage());
+                // Don't throw exception - allow user creation to continue even if graph service fails
+            }
         }
-        */
-        System.out.println("INFO: Graph service integration temporarily disabled - user saved to database only: " + savedUser.getUsername());
 
         return savedUser;
     }
@@ -67,7 +75,28 @@ public class UserService {
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
-            return userRepository.save(user);
+            User updatedUser = userRepository.save(user);
+            
+            // Sync update to graph service
+            if (graphClient != null) {
+                try {
+                    UserSyncDto syncDto = new UserSyncDto(
+                        String.valueOf(updatedUser.getId()),
+                        updatedUser.getUsername(),
+                        null, // email - not in User entity
+                        null, // department - not in User entity
+                        updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty() 
+                            ? updatedUser.getRoles().get(0) : null, // role - first role from list
+                        null // managerId
+                    );
+                    graphClient.syncUser(syncDto);
+                    System.out.println("✅ User " + updatedUser.getUsername() + " update synced to graph successfully");
+                } catch (Exception e) {
+                    System.err.println("⚠️ Failed to sync user update to graph: " + e.getMessage());
+                }
+            }
+            
+            return updatedUser;
         } else {
             return null; // Handle non-existent ID
         }
@@ -75,6 +104,16 @@ public class UserService {
 
     @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(Long id) {
+        // Delete from graph service first
+        if (graphClient != null) {
+            try {
+                graphClient.deleteUser(String.valueOf(id));
+                System.out.println("✅ User " + id + " deleted from graph successfully");
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to delete user from graph: " + e.getMessage());
+            }
+        }
+        
         userRepository.deleteById(id);
     }
 

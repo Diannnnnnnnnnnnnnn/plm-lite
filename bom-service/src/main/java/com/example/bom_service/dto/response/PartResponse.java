@@ -1,16 +1,22 @@
 package com.example.bom_service.dto.response;
 
 import com.example.plm.common.model.Stage;
+import com.example.plm.common.model.Status;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class PartResponse {
     private String id;
     private String title;
+    private String description;
     private Stage stage;
+    private Status status;
     private String level;
     private String creator;
     private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+    private boolean deleted;
+    private LocalDateTime deleteTime;
     private List<PartUsageResponse> childUsages;
     private List<String> documentIds;
 
@@ -117,5 +123,45 @@ public class PartResponse {
 
     public void setDocumentIds(List<String> documentIds) {
         this.documentIds = documentIds;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(LocalDateTime updateTime) {
+        this.updateTime = updateTime;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeleteTime() {
+        return deleteTime;
+    }
+
+    public void setDeleteTime(LocalDateTime deleteTime) {
+        this.deleteTime = deleteTime;
     }
 }

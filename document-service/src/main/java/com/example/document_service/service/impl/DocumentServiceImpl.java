@@ -25,7 +25,14 @@ import com.example.document_service.service.gateway.WorkflowGateway;
 import com.example.plm.common.model.Stage;
 import com.example.plm.common.model.Status;
 
+// Graph Service imports
+import com.example.document_service.client.GraphServiceClient;
+import com.example.document_service.client.DocumentSyncDto;
+
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class DocumentServiceImpl implements DocumentService {
     private final DocumentMasterRepository masterRepo;
     private final DocumentRepository docRepo;
@@ -33,19 +40,25 @@ public class DocumentServiceImpl implements DocumentService {
     private final SearchGateway searchGateway;
     private final WorkflowGateway workflowGateway;
     private final Neo4jGateway neo4jGateway;
+    private final com.example.document_service.service.gateway.FileStorageGateway fileStorageGateway;
+    private final GraphServiceClient graphServiceClient;
 
     public DocumentServiceImpl(DocumentMasterRepository masterRepo,
                                DocumentRepository docRepo,
                                DocumentHistoryRepository historyRepo,
                                SearchGateway searchGateway,
                                WorkflowGateway workflowGateway,
-                               Neo4jGateway neo4jGateway) {
+                               Neo4jGateway neo4jGateway,
+                               com.example.document_service.service.gateway.FileStorageGateway fileStorageGateway,
+                               GraphServiceClient graphServiceClient) {
         this.masterRepo = masterRepo;
         this.docRepo = docRepo;
         this.historyRepo = historyRepo;
         this.searchGateway = searchGateway;
         this.workflowGateway = workflowGateway;
         this.neo4jGateway = neo4jGateway;
+        this.fileStorageGateway = fileStorageGateway;
+        this.graphServiceClient = graphServiceClient;
     }
 
     private void logHistory(Document doc, String action, String oldVal, String newVal, String user, String comment) {
@@ -60,17 +73,37 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private void sync(Document d) {
-        // TODO: Re-enable when search-service and graph-service are available
-        // Temporarily disabled for testing core document service functionality
+        // Sync to Neo4j Graph Service
+        syncDocumentToGraph(d);
+        
+        // TODO: Re-enable search when search-service is available
         /*
         try {
             searchGateway.index(d);
-            neo4jGateway.upsert(d);
         } catch (Exception e) {
-            throw new DocumentServiceException("Failed to synchronize document with external services", e);
+            log.warn("Failed to sync to search service: {}", e.getMessage());
         }
         */
-        System.out.println("INFO: External service sync disabled - document saved to database only");
+    }
+    
+    private void syncDocumentToGraph(Document document) {
+        try {
+            DocumentSyncDto dto = new DocumentSyncDto(
+                document.getId(),
+                document.getTitle(),
+                document.getDescription(),
+                String.valueOf(document.getVersion()),
+                document.getStatus() != null ? document.getStatus().name() : "IN_WORK",
+                document.getContentType(),
+                document.getFileSize(),
+                document.getCreator(),
+                document.getCreateTime()
+            );
+            graphServiceClient.syncDocument(dto);
+            log.info("✅ Document {} synced to graph successfully", document.getId());
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync document {} to graph: {}", document.getId(), e.getMessage());
+        }
     }
 
     @Override
@@ -509,17 +542,70 @@ public class DocumentServiceImpl implements DocumentService {
         logHistory(d, "FILE_ATTACHED", oldKey, fileKey, user, "File stored via file-storage service");
     }
 
+    @Transactional
+    @Override
+    public void attachFileWithMetadata(String documentId, String fileKey, org.springframework.web.multipart.MultipartFile file, String user) {
+        Document d = docRepo.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document not found"));
+        
+        String oldKey = d.getFileKey();
+        
+        // Set file key
+        d.setFileKey(fileKey);
+        
+        // Set file metadata
+        d.setOriginalFilename(file.getOriginalFilename());
+        d.setContentType(file.getContentType());
+        d.setFileSize(file.getSize());
+        d.setFileUploadedAt(LocalDateTime.now());
+        
+        // Determine storage location based on fileKey prefix or MinIO availability
+        // For now, assume MINIO since that's the primary storage
+        d.setStorageLocation("MINIO");
+        
+        docRepo.save(d);
+        
+        logHistory(d, "FILE_ATTACHED", oldKey, fileKey, user, 
+                  String.format("File stored: %s (%d bytes)", file.getOriginalFilename(), file.getSize()));
+    }
+
+    @Transactional
+    @Override
+    public void clearFileMetadata(String documentId) {
+        Document d = docRepo.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document not found"));
+        String oldKey = d.getFileKey();
+        d.setFileKey(null);
+        d.setOriginalFilename(null);
+        d.setContentType(null);
+        d.setFileSize(null);
+        d.setStorageLocation(null);
+        d.setFileUploadedAt(null);
+        docRepo.save(d);
+        logHistory(d, "FILE_DELETED", oldKey, null, "SYSTEM", "File deleted from storage");
+    }
+
     @Override
     @Transactional
     public void deleteDocument(String documentId) {
         Document document = docRepo.findById(documentId)
                 .orElseThrow(() -> new NotFoundException("Document not found: " + documentId));
 
+        // Delete the file from storage (MinIO or local) if exists
+        if (document.getFileKey() != null && !document.getFileKey().isEmpty()) {
+            boolean deleted = fileStorageGateway.delete(document.getFileKey());
+            if (deleted) {
+                System.out.println("INFO: File deleted from storage: " + document.getFileKey());
+            } else {
+                System.out.println("WARN: Failed to delete file from storage: " + document.getFileKey());
+            }
+        }
+
         // Delete all history records for this document
         List<DocumentHistory> historyList = historyRepo.findByDocumentIdOrderByTimestampDesc(documentId);
         historyRepo.deleteAll(historyList);
 
-        // Delete the document
+        // Delete the document from database
         docRepo.delete(document);
     }
 

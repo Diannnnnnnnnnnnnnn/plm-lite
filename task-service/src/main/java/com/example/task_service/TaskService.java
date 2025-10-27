@@ -27,13 +27,13 @@ public class TaskService {
     @Autowired(required = false)
     private TaskSearchRepository taskSearchRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private GraphClient graphClient;
 
-    @Autowired
+    @Autowired(required = false)
     private FileStorageClient fileStorageClient;
 
-    @Autowired
+    @Autowired(required = false)
     private FileMetadataRepository fileMetadataRepository;
 
     @Autowired

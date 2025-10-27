@@ -168,10 +168,15 @@ public class PartController {
         PartResponse response = new PartResponse();
         response.setId(part.getId());
         response.setTitle(part.getTitle());
+        response.setDescription(part.getDescription());
         response.setStage(part.getStage());
+        response.setStatus(part.getStatus());
         response.setLevel(part.getLevel());
         response.setCreator(part.getCreator());
         response.setCreateTime(part.getCreateTime());
+        response.setUpdateTime(part.getUpdateTime());
+        response.setDeleted(part.isDeleted());
+        response.setDeleteTime(part.getDeleteTime());
         
         // Add child usages if available
         if (part.getChildUsages() != null) {
