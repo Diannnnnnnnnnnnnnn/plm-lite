@@ -19,11 +19,14 @@ import com.example.task_service.elasticsearch.TaskSearchRepository;
 @Profile("!dev")
 public class TaskSearchController {
 
-    @Autowired
+    @Autowired(required = false)
     private TaskSearchRepository taskSearchRepository;
 
     @GetMapping
     public List<TaskDocument> searchTasks(@RequestParam("keyword") String keyword) {
+        if (taskSearchRepository == null) {
+            return List.of(); // Return empty list if Elasticsearch is not available
+        }
         return taskSearchRepository.findByTitleContainingOrDescriptionContaining(keyword, keyword);
     }
 }

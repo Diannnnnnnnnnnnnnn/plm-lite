@@ -6,7 +6,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "document_master")
+@Table(name = "DocumentMaster")
 public class DocumentMaster {
 
     @Id

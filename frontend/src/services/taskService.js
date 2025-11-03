@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8082';
+const API_BASE_URL = 'http://localhost:8082/api';
 
 class TaskService {
   constructor() {
@@ -85,7 +85,7 @@ class TaskService {
 
   async getReviewTasks(userId) {
     try {
-      const response = await this.api.get(`/api/tasks/review-tasks/${userId}`);
+      const response = await this.api.get(`/tasks/review-tasks/${userId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching review tasks for user ${userId}:`, error);
@@ -95,7 +95,7 @@ class TaskService {
 
   async getTasksByDocument(documentId) {
     try {
-      const response = await this.api.get(`/api/tasks/by-document/${documentId}`);
+      const response = await this.api.get(`/tasks/by-document/${documentId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching tasks for document ${documentId}:`, error);
@@ -105,7 +105,7 @@ class TaskService {
 
   async addTaskSignoff(taskId, userId, action, comments) {
     try {
-      const response = await this.api.post(`/api/tasks/${taskId}/signoff`, {
+      const response = await this.api.post(`/tasks/${taskId}/signoff`, {
         userId,
         action,
         comments

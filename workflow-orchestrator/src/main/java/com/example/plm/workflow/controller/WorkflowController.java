@@ -206,22 +206,41 @@ public class WorkflowController {
     }
 
     /**
-     * Start Change Approval Workflow (Future implementation)
+     * Start Change Approval Workflow
+     * Called by change-service when a change is submitted for review
      */
     @PostMapping("/change-approval/start")
     public ResponseEntity<Map<String, String>> startChangeApprovalWorkflow(
-            @RequestBody Map<String, String> request) {
+            @RequestBody StartChangeApprovalRequest request) {
         
-        String changeId = request.get("changeId");
-        String initiatorId = request.get("initiatorId");
+        System.out.println("🔵 API: Starting change approval workflow");
+        System.out.println("   Request: " + request);
 
-        String processInstanceKey = workflowService.startChangeApprovalWorkflow(changeId, initiatorId);
+        try {
+            String processInstanceKey = workflowService.startChangeApprovalWorkflow(
+                request.getChangeId(),
+                request.getChangeTitle(),
+                request.getCreator(),
+                request.getReviewerId()
+            );
 
-        Map<String, String> response = new HashMap<>();
-        response.put("processInstanceKey", processInstanceKey);
-        response.put("status", "STARTED");
+            Map<String, String> response = new HashMap<>();
+            response.put("processInstanceKey", processInstanceKey);
+            response.put("status", "STARTED");
+            response.put("message", "Change approval workflow started successfully");
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ API: Failed to start change workflow: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "ERROR");
+            errorResponse.put("message", "Failed to start workflow: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
     }
 
     /**
@@ -305,6 +324,36 @@ class StartDocumentApprovalRequest {
                 ", reviewerIds=" + reviewerIds +
                 ", initialReviewer='" + initialReviewer + '\'' +
                 ", technicalReviewer='" + technicalReviewer + '\'' +
+                '}';
+    }
+}
+
+/**
+ * DTO for starting change approval workflow
+ */
+class StartChangeApprovalRequest {
+    private String changeId;
+    private String changeTitle;
+    private String creator;
+    private String reviewerId;
+
+    // Getters and setters
+    public String getChangeId() { return changeId; }
+    public void setChangeId(String changeId) { this.changeId = changeId; }
+    public String getChangeTitle() { return changeTitle; }
+    public void setChangeTitle(String changeTitle) { this.changeTitle = changeTitle; }
+    public String getCreator() { return creator; }
+    public void setCreator(String creator) { this.creator = creator; }
+    public String getReviewerId() { return reviewerId; }
+    public void setReviewerId(String reviewerId) { this.reviewerId = reviewerId; }
+
+    @Override
+    public String toString() {
+        return "StartChangeApprovalRequest{" +
+                "changeId='" + changeId + '\'' +
+                ", changeTitle='" + changeTitle + '\'' +
+                ", creator='" + creator + '\'' +
+                ", reviewerId='" + reviewerId + '\'' +
                 '}';
     }
 }

@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>ES Integration Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .summary { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metric { display: inline-block; margin: 10px 20px; }
+        .metric-label { font-weight: bold; color: #666; }
+        .metric-value { font-size: 24px; font-weight: bold; }
+        .pass { color: #4CAF50; }
+        .fail { color: #f44336; }
+        .skip { color: #FF9800; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th { background: #4CAF50; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:hover { background-color: #f5f5f5; }
+        .status-pass { background-color: #e8f5e9; color: #2e7d32; font-weight: bold; padding: 4px 8px; border-radius: 3px; }
+        .status-fail { background-color: #ffebee; color: #c62828; font-weight: bold; padding: 4px 8px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>Elasticsearch Integration Test Report</h1>
+    
+    <div class="summary">
+        <div class="metric">
+            <div class="metric-label">Total Tests</div>
+            <div class="metric-value">36</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Passed</div>
+            <div class="metric-value pass">25</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Failed</div>
+            <div class="metric-value fail">11</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Success Rate</div>
+            <div class="metric-value pass">69.4%</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Duration</div>
+            <div class="metric-value">431.67s</div>
+        </div>
+    </div>
+    
+    <h2>Test Results</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Test Name</th>
+                <th>Status</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody>            <tr>
+                <td>Elasticsearch is accessible</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>ES cluster status is not red</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td>green/yellow</td>
+                <td>yellow</td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Kibana is accessible</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Document Service is running</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>BOM Service is running</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Change Service is running</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Task Service is running</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Search Service is running</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Index 'documents' exists</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Index 'boms' exists</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Index 'parts' exists</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Index 'changes' exists</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">Index will be created on first document</td>
+            </tr>            <tr>
+                <td>Index 'tasks' exists</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">Index will be created on first document</td>
+            </tr>            <tr>
+                <td>Document created via API</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (500) Internal Server Error.</td>
+            </tr>            <tr>
+                <td>Document search endpoint works</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (500) Internal Server Error.</td>
+            </tr>            <tr>
+                <td>Part created via API</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (500) Internal Server Error.</td>
+            </tr>            <tr>
+                <td>Part search in ES works</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Task created via API</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Task auto-indexed to ES</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td>1</td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Task updated via API</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Task search in ES works</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (404) Not Found.</td>
+            </tr>            <tr>
+                <td>Changes index is accessible</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (404) Not Found.</td>
+            </tr>            <tr>
+                <td>Change Service ES search endpoint exists</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (400) Bad Request.</td>
+            </tr>            <tr>
+                <td>BOM created via API</td>
+                <td><span class="status-fail">FAIL</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;">The remote server returned an error: (500) Internal Server Error.</td>
+            </tr>            <tr>
+                <td>BOM search in ES works</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Unified search endpoint works</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Unified search returns structured response</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Documents included in unified search</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Unified search response time acceptable</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td><1000ms</td>
+                <td>51ms</td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Document-only search endpoint works</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Empty query handled gracefully</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Special characters in query handled</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td></td>
+                <td></td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Average ES query time acceptable</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td><100ms</td>
+                <td>13.08ms</td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Max ES query time acceptable</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td><500ms</td>
+                <td>30.15ms</td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Concurrent queries successful</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td>5/5</td>
+                <td>5/5</td>
+                <td style="color: #c62828;"></td>
+            </tr>            <tr>
+                <td>Document count consistency</td>
+                <td><span class="status-pass">PASS</span></td>
+                <td>Â±2 difference</td>
+                <td>SQL:2, ES:2</td>
+                <td style="color: #c62828;"></td>
+            </tr>        </tbody>
+    </table>
+    
+    <p style="margin-top: 30px; color: #666; text-align: center;">
+        Generated on 2025-10-30 19:21:42
+    </p>
+</body>
+</html>

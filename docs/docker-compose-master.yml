@@ -1,0 +1,276 @@
+version: '3.8'
+
+# =====================================================
+# PLM Lite - Master Docker Compose Configuration
+# All infrastructure services in one place
+# =====================================================
+
+services:
+  # ==================== Elasticsearch Stack ====================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: plm-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: plm-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_USERNAME=
+      - ELASTICSEARCH_PASSWORD=
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ==================== Camunda Platform 8.7 ====================
+  zeebe:
+    image: camunda/zeebe:8.7.0
+    container_name: zeebe
+    ports:
+      - "26500:26500"
+      - "9600:9600"
+      - "8088:8080"
+    environment:
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME=io.camunda.zeebe.exporter.ElasticsearchExporter
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL=http://elasticsearch:9200
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_BULK_SIZE=1
+      - ZEEBE_AUTHENTICATION_ENABLED=false
+      - ZEEBE_GATEWAY_SECURITY_ENABLED=false
+      - ZEEBE_BROKER_DATA_DISKUSAGECOMMANDWATERMARK=0.998
+      - ZEEBE_BROKER_DATA_DISKUSAGEREPLICATIONWATERMARK=0.999
+      - CAMUNDA_DATABASE_URL=http://elasticsearch:9200
+      - "JAVA_TOOL_OPTIONS=-Xms512m -Xmx512m"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/9600' || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - zeebe-data:/usr/local/zeebe/data
+    networks:
+      - plm-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  operate:
+    image: camunda/operate:8.7.0
+    container_name: operate
+    ports:
+      - "8181:8080"
+    environment:
+      - CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS=zeebe:26500
+      - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_ZEEBEELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_AUTH_ENABLED=false
+      - CAMUNDA_OPERATE_IDENTITY_AUTH_ENABLED=false
+      - SPRING_SECURITY_ENABLED=false
+      - CAMUNDA_SECURITY_ENABLED=false
+      - CAMUNDA_IDENTITY_ENABLED=false
+      - CAMUNDA_OPERATE_CSRFPREVENTIONENABLED=false
+      - CAMUNDA_OPERATE_CORS_ENABLED=true
+      - SPRING_PROFILES_ACTIVE=operate,standalone
+      - SPRING_PROFILES_EXCLUDE=auth
+      - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - plm-network
+    depends_on:
+      - zeebe
+      - elasticsearch
+
+  tasklist:
+    image: camunda/tasklist:8.7.0
+    container_name: tasklist
+    ports:
+      - "8182:8080"
+    environment:
+      - CAMUNDA_TASKLIST_ZEEBE_GATEWAYADDRESS=zeebe:26500
+      - CAMUNDA_TASKLIST_ZEEBE_RESTADDRESS=http://zeebe:8080
+      - CAMUNDA_TASKLIST_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_ZEEBEELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_AUTH_ENABLED=false
+      - CAMUNDA_TASKLIST_IDENTITY_AUTH_ENABLED=false
+      - SPRING_SECURITY_ENABLED=false
+      - CAMUNDA_SECURITY_ENABLED=false
+      - CAMUNDA_IDENTITY_ENABLED=false
+      - CAMUNDA_TASKLIST_CSRFPREVENTIONENABLED=false
+      - CAMUNDA_TASKLIST_CORS_ENABLED=true
+      - SPRING_PROFILES_ACTIVE=tasklist,standalone
+      - SPRING_PROFILES_EXCLUDE=auth
+      - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - plm-network
+    depends_on:
+      - zeebe
+      - elasticsearch
+
+  connectors:
+    image: camunda/connectors-bundle:8.7.0
+    container_name: connectors
+    ports:
+      - "8085:8080"
+    environment:
+      - CAMUNDA_CLIENT_MODE=self-managed
+      - CAMUNDA_CLIENT_ZEEBE_GRPCADDRESS=http://zeebe:26500
+      - OPERATE_CLIENT_BASEURL=http://operate:8080
+      - OPERATE_CLIENT_PROFILE=simple
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - plm-network
+    depends_on:
+      - zeebe
+      - operate
+
+  # ==================== Storage Services ====================
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Cache & Database ====================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-plm
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: plm
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.11
+    container_name: neo4j-plm
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    volumes:
+      - neo4j-data:/data
+    networks:
+      - plm-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  zeebe-data:
+    driver: local
+  minio-data:
+    driver: local
+  redis-data:
+    driver: local
+  mysql-data:
+    driver: local
+  neo4j-data:
+    driver: local
+
+networks:
+  plm-network:
+    driver: bridge
+
+

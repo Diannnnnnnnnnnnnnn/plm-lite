@@ -2,16 +2,13 @@ package com.example.task_service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication(
     exclude = {
-        org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration.class
+        org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration.class
     },
-    scanBasePackages = {"com.example.task_service", "com.example.plm.task.service"}
+    scanBasePackages = {"com.example.task_service"}
 )
 @EnableFeignClients(basePackages = {"com.example.task_service"})
 // @EnableCaching  // Enable caching - disabled for now

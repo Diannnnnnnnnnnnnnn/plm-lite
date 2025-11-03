@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8089';
+const API_BASE_URL = 'http://localhost:8089/api/v1';
 
 class BomService {
   constructor() {

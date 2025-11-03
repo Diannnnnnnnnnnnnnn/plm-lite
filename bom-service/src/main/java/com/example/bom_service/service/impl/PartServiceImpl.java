@@ -3,7 +3,6 @@ package com.example.bom_service.service.impl;
 import com.example.bom_service.dto.request.CreatePartRequest;
 import com.example.bom_service.dto.request.AddPartUsageRequest;
 import com.example.bom_service.dto.request.LinkPartToDocumentRequest;
-import com.example.bom_service.dto.response.BomHierarchyResponse;
 import com.example.bom_service.exception.NotFoundException;
 import com.example.bom_service.exception.ValidationException;
 import com.example.bom_service.model.Part;
@@ -13,6 +12,7 @@ import com.example.bom_service.repository.PartRepository;
 import com.example.bom_service.repository.PartUsageRepository;
 import com.example.bom_service.repository.DocumentPartLinkRepository;
 import com.example.bom_service.service.PartService;
+import com.example.bom_service.service.PartSearchService;
 import com.example.plm.common.model.Stage;
 
 // Graph Service imports
@@ -38,15 +38,18 @@ public class PartServiceImpl implements PartService {
     private final PartUsageRepository partUsageRepository;
     private final DocumentPartLinkRepository documentPartLinkRepository;
     private final GraphServiceClient graphServiceClient;
+    private final PartSearchService partSearchService;
 
     public PartServiceImpl(PartRepository partRepository, 
                           PartUsageRepository partUsageRepository,
                           DocumentPartLinkRepository documentPartLinkRepository,
-                          GraphServiceClient graphServiceClient) {
+                          GraphServiceClient graphServiceClient,
+                          PartSearchService partSearchService) {
         this.partRepository = partRepository;
         this.partUsageRepository = partUsageRepository;
         this.documentPartLinkRepository = documentPartLinkRepository;
         this.graphServiceClient = graphServiceClient;
+        this.partSearchService = partSearchService;
     }
 
     @Override
@@ -68,6 +71,13 @@ public class PartServiceImpl implements PartService {
         // Sync to Neo4j
         syncPartToGraph(savedPart);
         
+        // Index to Elasticsearch
+        try {
+            partSearchService.indexPart(savedPart);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to index Part {} to Elasticsearch: {}", savedPart.getId(), e.getMessage());
+        }
+        
         return savedPart;
     }
 
@@ -79,7 +89,9 @@ public class PartServiceImpl implements PartService {
 
     @Override
     public List<Part> getAllParts() {
-        return partRepository.findAll();
+        return partRepository.findAll().stream()
+                .filter(part -> !part.isDeleted())
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -102,7 +114,16 @@ public class PartServiceImpl implements PartService {
     public Part updatePartStage(String partId, Stage stage) {
         Part part = getPartById(partId);
         part.setStage(stage);
-        return partRepository.save(part);
+        Part updatedPart = partRepository.save(part);
+        
+        // Re-index to Elasticsearch
+        try {
+            partSearchService.indexPart(updatedPart);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to re-index Part {} to Elasticsearch: {}", updatedPart.getId(), e.getMessage());
+        }
+        
+        return updatedPart;
     }
 
     @Override
@@ -121,11 +142,41 @@ public class PartServiceImpl implements PartService {
         // Soft delete
         part.setDeleted(true);
         part.setDeleteTime(java.time.LocalDateTime.now());
-        partRepository.save(part);
+        Part deletedPart = partRepository.save(part);
         log.info("✅ Part {} soft deleted successfully", id);
+        
+        // Re-index to Elasticsearch (keep deleted parts in index with deleted flag)
+        try {
+            partSearchService.indexPart(deletedPart);
+            log.info("✅ Deleted Part {} re-indexed to Elasticsearch with deleted flag", id);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to re-index deleted Part {} to Elasticsearch: {}", id, e.getMessage());
+        }
         
         // Note: Could optionally sync delete to Neo4j here
         // graphServiceClient.deletePart(id);
+    }
+
+    @Override
+    @Transactional
+    public int reindexAllParts() {
+        log.info("🔄 Starting re-indexing of all parts to Elasticsearch...");
+        List<Part> allParts = partRepository.findAll();
+        int successCount = 0;
+        int failureCount = 0;
+        
+        for (Part part : allParts) {
+            try {
+                partSearchService.indexPart(part);
+                successCount++;
+            } catch (Exception e) {
+                log.error("❌ Failed to index Part {} to Elasticsearch: {}", part.getId(), e.getMessage());
+                failureCount++;
+            }
+        }
+        
+        log.info("✅ Re-indexing complete: {} parts indexed successfully, {} failures", successCount, failureCount);
+        return successCount;
     }
 
     @Override
@@ -191,12 +242,6 @@ public class PartServiceImpl implements PartService {
     @Override
     public List<Part> getParentParts(String childPartId) {
         return partRepository.findParentsOf(childPartId);
-    }
-
-    @Override
-    public BomHierarchyResponse getBomHierarchy(String rootPartId) {
-        Part rootPart = getPartById(rootPartId);
-        return buildHierarchy(rootPart, 1);
     }
 
     @Override
@@ -302,25 +347,6 @@ public class PartServiceImpl implements PartService {
         return false;
     }
 
-    private BomHierarchyResponse buildHierarchy(Part part, Integer quantity) {
-        BomHierarchyResponse response = new BomHierarchyResponse();
-        response.setPartId(part.getId());
-        response.setPartTitle(part.getTitle());
-        response.setLevel(part.getLevel());
-        response.setQuantity(quantity);
-        
-        List<PartUsage> childUsages = partUsageRepository.findByParentIdOrderByChildTitle(part.getId());
-        List<BomHierarchyResponse> children = new ArrayList<>();
-        
-        for (PartUsage usage : childUsages) {
-            BomHierarchyResponse childResponse = buildHierarchy(usage.getChild(), usage.getQuantity());
-            children.add(childResponse);
-        }
-        
-        response.setChildren(children);
-        return response;
-    }
-    
     // ==========================================
     // Graph Sync Methods
     // ==========================================

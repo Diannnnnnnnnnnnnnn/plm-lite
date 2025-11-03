@@ -24,6 +24,6 @@ public interface DocumentService {
     void attachFileWithMetadata(String documentId, String fileKey, org.springframework.web.multipart.MultipartFile file, String user);
     void clearFileMetadata(String documentId);
     void deleteDocument(String documentId);
-    List<Document> getDocumentsByBomId(String bomId);
+    List<Document> getDocumentsByPartId(String partId);
     Document initiateChangeBasedEdit(String documentId, String changeId, String user);
 }

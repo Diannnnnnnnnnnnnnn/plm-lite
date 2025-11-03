@@ -29,6 +29,9 @@ import com.example.plm.common.model.Status;
 import com.example.document_service.client.GraphServiceClient;
 import com.example.document_service.client.DocumentSyncDto;
 
+// Elasticsearch imports
+import com.example.document_service.service.DocumentSearchService;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -42,6 +45,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final Neo4jGateway neo4jGateway;
     private final com.example.document_service.service.gateway.FileStorageGateway fileStorageGateway;
     private final GraphServiceClient graphServiceClient;
+    private final DocumentSearchService documentSearchService;
 
     public DocumentServiceImpl(DocumentMasterRepository masterRepo,
                                DocumentRepository docRepo,
@@ -50,7 +54,8 @@ public class DocumentServiceImpl implements DocumentService {
                                WorkflowGateway workflowGateway,
                                Neo4jGateway neo4jGateway,
                                com.example.document_service.service.gateway.FileStorageGateway fileStorageGateway,
-                               GraphServiceClient graphServiceClient) {
+                               GraphServiceClient graphServiceClient,
+                               DocumentSearchService documentSearchService) {
         this.masterRepo = masterRepo;
         this.docRepo = docRepo;
         this.historyRepo = historyRepo;
@@ -59,6 +64,7 @@ public class DocumentServiceImpl implements DocumentService {
         this.neo4jGateway = neo4jGateway;
         this.fileStorageGateway = fileStorageGateway;
         this.graphServiceClient = graphServiceClient;
+        this.documentSearchService = documentSearchService;
     }
 
     private void logHistory(Document doc, String action, String oldVal, String newVal, String user, String comment) {
@@ -76,14 +82,12 @@ public class DocumentServiceImpl implements DocumentService {
         // Sync to Neo4j Graph Service
         syncDocumentToGraph(d);
         
-        // TODO: Re-enable search when search-service is available
-        /*
+        // Sync to Elasticsearch
         try {
-            searchGateway.index(d);
+            documentSearchService.indexDocument(d);
         } catch (Exception e) {
-            log.warn("Failed to sync to search service: {}", e.getMessage());
+            log.warn("⚠️ Failed to sync to Elasticsearch: {}", e.getMessage());
         }
-        */
     }
     
     private void syncDocumentToGraph(Document document) {
@@ -119,9 +123,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private void validateCreateRequest(CreateDocumentRequest req) {
-        if (req.getMasterId() == null || req.getMasterId().trim().isEmpty()) {
-            throw new ValidationException("Master ID is required");
-        }
+        // Note: masterId is now optional and will be auto-generated if not provided
         if (req.getTitle() == null || req.getTitle().trim().isEmpty()) {
             throw new ValidationException("Title is required");
         }
@@ -132,22 +134,47 @@ public class DocumentServiceImpl implements DocumentService {
             throw new ValidationException("Stage is required");
         }
     }
+    
+    private String generateUniqueMasterId() {
+        String masterId;
+        int attempts = 0;
+        do {
+            // Generate a 4-digit random number prefixed with "DOC-"
+            masterId = String.format("DOC-%04d", (int)(Math.random() * 10000));
+            attempts++;
+            if (attempts > 100) {
+                // Fallback to UUID if we can't find a unique short ID
+                masterId = "DOC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                break;
+            }
+        } while (masterRepo.existsById(masterId));
+        
+        return masterId;
+    }
 
     @Transactional
     @Override
     public Document create(CreateDocumentRequest req) {
         validateCreateRequest(req);
         
-        // Check if a document with this masterID already exists
-        if (masterRepo.existsById(req.getMasterId())) {
-            throw new ValidationException(
-                "Master ID '" + req.getMasterId() + "' is already in use. " +
-                "Please use a different Master ID or create a new version of the existing document."
-            );
+        // Auto-generate masterId if not provided
+        String masterId = req.getMasterId();
+        if (masterId == null || masterId.trim().isEmpty()) {
+            masterId = generateUniqueMasterId();
+            log.info("Auto-generated Master ID: {}", masterId);
+        } else {
+            masterId = masterId.trim();
+            // Check if a document with this masterID already exists
+            if (masterRepo.existsById(masterId)) {
+                throw new ValidationException(
+                    "Master ID '" + masterId + "' is already in use. " +
+                    "Please use a different Master ID or leave it empty to auto-generate one."
+                );
+            }
         }
         
         DocumentMaster master = new DocumentMaster();
-        master.setId(req.getMasterId());
+        master.setId(masterId);
         master.setTitle(req.getTitle());
         master.setCreator(req.getCreator());
         master.setCategory(req.getCategory());
@@ -163,7 +190,7 @@ public class DocumentServiceImpl implements DocumentService {
         d.setStatus(Status.IN_WORK);
         d.setRevision(0);
         d.setVersion(1);
-        d.setBomId(req.getBomId());  // Set related BOM ID
+        d.setPartId(req.getPartId());  // Set related Part ID
 
         d = docRepo.save(d);
         logHistory(d, "CREATED", null, d.getStatus().name(), req.getCreator(), "Initial creation");
@@ -233,7 +260,7 @@ public class DocumentServiceImpl implements DocumentService {
             newDocument.setRevision(currentDocument.getRevision());
             newDocument.setVersion(currentDocument.getVersion() + 1);  // Increment version
             newDocument.setFileKey(currentDocument.getFileKey());  // Copy file key from current version
-            newDocument.setBomId(currentDocument.getBomId());
+            newDocument.setPartId(currentDocument.getPartId());
             newDocument.setActive(true);  // New document is the active version
             
             // Mark the current document as inactive (archived version)
@@ -373,7 +400,7 @@ public class DocumentServiceImpl implements DocumentService {
             releasedDocument.setRevision(currentDocument.getRevision() + 1);  // Increment revision
             releasedDocument.setVersion(0);  // Reset version to 0
             releasedDocument.setFileKey(currentDocument.getFileKey());
-            releasedDocument.setBomId(currentDocument.getBomId());
+            releasedDocument.setPartId(currentDocument.getPartId());
             releasedDocument.setActive(true);  // New released document is active
             
             // Mark the current document as inactive
@@ -428,7 +455,7 @@ public class DocumentServiceImpl implements DocumentService {
         d.setRevision(current.getRevision());
         d.setVersion(current.getVersion() + 1);
         d.setFileKey(current.getFileKey());
-        d.setBomId(current.getBomId());
+        d.setPartId(current.getPartId());
         d.setActive(true);  // New revision is active
 
         d = docRepo.save(d);
@@ -468,7 +495,7 @@ public class DocumentServiceImpl implements DocumentService {
         newVersion.setRevision(releasedDocument.getRevision());
         newVersion.setVersion(releasedDocument.getVersion() + 1); // Increment version
         newVersion.setFileKey(releasedDocument.getFileKey()); // Copy file key
-        newVersion.setBomId(releasedDocument.getBomId());
+        newVersion.setPartId(releasedDocument.getPartId());
         newVersion.setActive(true); // New version is active
 
         newVersion = docRepo.save(newVersion);
@@ -607,10 +634,17 @@ public class DocumentServiceImpl implements DocumentService {
 
         // Delete the document from database
         docRepo.delete(document);
+        
+        // Delete from Elasticsearch
+        try {
+            documentSearchService.deleteDocument(documentId);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to delete from Elasticsearch: {}", e.getMessage());
+        }
     }
 
     @Override
-    public List<Document> getDocumentsByBomId(String bomId) {
-        return docRepo.findByBomId(bomId);
+    public List<Document> getDocumentsByPartId(String partId) {
+        return docRepo.findByPartId(partId);
     }
 }

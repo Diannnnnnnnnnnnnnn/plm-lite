@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8084/api';
+const API_BASE_URL = 'http://localhost:8084/api';  // Change service port
 
 class ChangeService {
   constructor() {
@@ -58,6 +58,16 @@ class ChangeService {
       return response.data;
     } catch (error) {
       console.error(`Error approving change ${changeId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteChange(changeId) {
+    try {
+      await this.api.delete(`/changes/${changeId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error deleting change ${changeId}:`, error);
       throw error;
     }
   }

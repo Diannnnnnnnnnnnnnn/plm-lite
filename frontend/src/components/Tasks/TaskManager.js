@@ -362,6 +362,41 @@ export default function TaskManager() {
         return;
       }
 
+      // Check if this is a change review task
+      if (isChangeReviewTask(selectedTaskForDetails)) {
+        console.log('This is a change review task');
+        const changeId = extractChangeIdFromTask(selectedTaskForDetails);
+        if (changeId) {
+          console.log('Fetching change details for ID:', changeId);
+          try {
+            setLoadingDocument(true);
+            const change = await changeService.getChangeById(changeId);
+            console.log('Change details loaded:', change);
+            // Store change details in a format similar to document details
+            setTaskDocumentDetails({
+              id: change.id,
+              title: change.title,
+              stage: change.stage,
+              status: change.status,
+              creator: change.creator,
+              createTime: change.createTime,
+              changeReason: change.changeReason,
+              product: change.product,
+              changeClass: change.changeClass,
+              isChange: true // Flag to indicate this is change data
+            });
+          } catch (error) {
+            console.error('Failed to load change details:', error);
+            setTaskDocumentDetails(null);
+          } finally {
+            setLoadingDocument(false);
+          }
+          return;
+        } else {
+          console.warn('No change ID found, skipping change details fetch');
+        }
+      }
+
       // Check if this is a document review task
       const documentId = extractDocumentIdFromTask(selectedTaskForDetails);
       if (!documentId) {
@@ -525,15 +560,27 @@ export default function TaskManager() {
   };
 
   const extractDocumentIdFromTask = (task) => {
-    // Try to extract document ID from task name which has format: "Review Document: masterId version [documentId]"
-    let match = task.name.match(/\[([^\]]+)\]/);
-    if (match) {
-      return match[1];
+    if (!task) {
+      return null;
     }
 
-    // Fallback: try to extract from description which has format: "... Document ID: xxx"
+    // NEW: Use context-aware task fields (preferred method)
+    if (task.contextType === 'DOCUMENT' && task.contextId) {
+      console.log('Found document ID from contextId:', task.contextId);
+      return task.contextId;
+    }
+
+    // FALLBACK: Try to extract document ID from task name which has format: "Review Document: masterId version [documentId]"
+    if (task.name) {
+      let match = task.name.match(/\[([^\]]+)\]/);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    // FALLBACK: Try to extract from description which has format: "... Document ID: xxx"
     if (task.description) {
-      match = task.description.match(/Document ID:\s*([a-f0-9-]+)/i);
+      let match = task.description.match(/Document ID:\s*([a-f0-9-]+)/i);
       if (match) {
         return match[1];
       }
@@ -543,18 +590,39 @@ export default function TaskManager() {
   };
 
   const extractChangeIdFromTask = (task) => {
-    // Try to extract change ID from description which has format: "Please review change {changeId} - ..."
+    if (!task) {
+      console.warn('extractChangeIdFromTask: task is null');
+      return null;
+    }
+
+    console.log('Extracting change ID from task:', task.name, task.description);
+
+    // NEW: Use context-aware task fields (preferred method)
+    if (task.contextType === 'CHANGE' && task.contextId) {
+      console.log('Found change ID from contextId:', task.contextId);
+      return task.contextId;
+    }
+
+    // FALLBACK: Try to extract change ID from description (legacy method)
     if (task.description) {
       const match = task.description.match(/review change\s+([a-f0-9-]+)/i);
       if (match) {
+        console.log('Found change ID from description:', match[1]);
         return match[1];
       }
     }
+    
+    console.warn('Could not extract change ID from task description or context');
     return null;
   };
 
   const isChangeReviewTask = (task) => {
-    return task.name && task.name.startsWith('Review Change:');
+    // NEW: Use context-aware task fields (preferred method)
+    if (task && task.contextType === 'CHANGE') {
+      return true;
+    }
+    // FALLBACK: Check task name (legacy method)
+    return task && task.name && task.name.startsWith('Review Change:');
   };
 
   const handleApproveReview = async () => {
@@ -568,19 +636,31 @@ export default function TaskManager() {
           return;
         }
 
-        await changeService.approveChange(changeId);
+        try {
+          await changeService.approveChange(changeId);
 
-        // Mark task as completed with approval flag for workflow integration
-        await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', true, 'Approved');
+          // Mark task as completed with approval flag for workflow integration
+          await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', true, 'Approved');
 
-        alert('Change approved successfully!');
-        setTaskDetailsOpen(false);
+          alert('Change approved successfully!');
+          setTaskDetailsOpen(false);
 
-        // Refresh tasks for current user only
-        const currentUser = getCurrentUsername();
-        if (currentUser) {
-          const response = await taskService.getTasksByAssignee(currentUser);
-          setTasks(response);
+          // Refresh tasks for current user only
+          const currentUser = getCurrentUsername();
+          if (currentUser) {
+            const response = await taskService.getTasksByAssignee(currentUser);
+            setTasks(response);
+          }
+        } catch (error) {
+          console.error('Error approving change:', error);
+          if (error.response && error.response.status === 404) {
+            alert(`Change not found (ID: ${changeId}). The change may have been deleted or the task contains an invalid change reference.`);
+          } else if (error.response && error.response.status === 400) {
+            alert('Change cannot be approved. It may not be in review status.');
+          } else {
+            alert(`Failed to approve change: ${error.message || 'Unknown error'}`);
+          }
+          return;
         }
       } else {
         // Handle document approval (workflow-managed)
@@ -1213,7 +1293,96 @@ export default function TaskManager() {
                         <Box sx={{ p: 2, textAlign: 'center' }}>
                           <CircularProgress size={24} />
                         </Box>
+                      ) : taskDocumentDetails.isChange ? (
+                        /* Change Details */
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Change Title
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                              {taskDocumentDetails.title}
+                            </Typography>
+                          </Box>
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Change ID
+                            </Typography>
+                            <Typography variant="body1">
+                              {taskDocumentDetails.id}
+                            </Typography>
+                          </Box>
+
+                          <Box display="flex" gap={2}>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Status
+                              </Typography>
+                              <Chip
+                                label={taskDocumentDetails.status}
+                                color={
+                                  taskDocumentDetails.status === 'RELEASED' ? 'success' :
+                                  taskDocumentDetails.status === 'IN_REVIEW' ? 'warning' :
+                                  'default'
+                                }
+                                size="small"
+                              />
+                            </Box>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Stage
+                              </Typography>
+                              <Chip
+                                label={taskDocumentDetails.stage}
+                                color="primary"
+                                variant="outlined"
+                                size="small"
+                              />
+                            </Box>
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Class
+                              </Typography>
+                              <Chip
+                                label={taskDocumentDetails.changeClass}
+                                variant="outlined"
+                                size="small"
+                              />
+                            </Box>
+                          </Box>
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Product
+                            </Typography>
+                            <Typography variant="body1">
+                              {taskDocumentDetails.product}
+                            </Typography>
+                          </Box>
+
+                          {taskDocumentDetails.changeReason && (
+                            <Box>
+                              <Typography variant="subtitle2" color="textSecondary">
+                                Change Reason
+                              </Typography>
+                              <Typography variant="body1" sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                                {taskDocumentDetails.changeReason}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          <Box>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Creator
+                            </Typography>
+                            <Typography variant="body1">
+                              {taskDocumentDetails.creator}
+                            </Typography>
+                          </Box>
+                        </Box>
                       ) : (
+                        /* Document Details */
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <Box>
                             <Typography variant="subtitle2" color="textSecondary">

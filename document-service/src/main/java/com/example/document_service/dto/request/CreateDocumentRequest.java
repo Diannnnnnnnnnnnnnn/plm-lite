@@ -9,7 +9,7 @@ public class CreateDocumentRequest {
     private String creator;
     private String category;
     private Stage stage;
-    private String bomId;  // Related BOM ID
+    private String partId;  // Related Part ID (replaces partId)
 
     public CreateDocumentRequest() {
     }
@@ -62,12 +62,12 @@ public class CreateDocumentRequest {
         this.stage = stage;
     }
 
-    public String getBomId() {
-        return bomId;
+    public String getPartId() {
+        return partId;
     }
 
-    public void setBomId(String bomId) {
-        this.bomId = bomId;
+    public void setPartId(String partId) {
+        this.partId = partId;
     }
 
     @Override

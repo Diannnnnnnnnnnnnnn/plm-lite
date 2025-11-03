@@ -1,0 +1,32 @@
+warning: in the working copy of 'frontend/src/components/BOM/BOMManager.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/frontend/src/components/BOM/BOMManager.js b/frontend/src/components/BOM/BOMManager.js[m
+[1mindex 04148dd..7cf9a91 100644[m
+[1m--- a/frontend/src/components/BOM/BOMManager.js[m
+[1m+++ b/frontend/src/components/BOM/BOMManager.js[m
+[36m@@ -85,18 +85,18 @@[m [mexport default function BOMManager() {[m
+   const [selectedChildPart, setSelectedChildPart] = useState('');[m
+   const [childPartQuantity, setChildPartQuantity] = useState(1);[m
+ [m
+[31m-  // Load Parts from API on component mount[m
+[32m+[m[32m  // Load BOMs from API on component mount[m
+   useEffect(() => {[m
+[31m-    const loadParts = async () => {[m
+[32m+[m[32m    const loadBOMs = async () => {[m
+       setLoading(true);[m
+       setError(null);[m
+       try {[m
+[31m-        // Load all parts (which are the new BOMs)[m
+[31m-        const partsData = await bomService.getAllParts();[m
+[31m-        console.log('Loaded Parts from API:', partsData);[m
+[31m-        // Parts already have hierarchy via childUsages, build tree[m
+[31m-        const partHierarchy = buildPartHierarchy(partsData);[m
+[31m-        setBOMs(partHierarchy);[m
+[32m+[m[32m        // Load all BOMs[m
+[32m+[m[32m        const bomsData = await bomService.getAllBOMs();[m
+[32m+[m[32m        console.log('Loaded BOMs from API:', bomsData);[m
+[32m+[m[32m        // BOMs already have hierarchy, build tree[m
+[32m+[m[32m        const bomHierarchy = buildBOMHierarchy(bomsData);[m
+[32m+[m[32m        setBOMs(bomHierarchy);[m
+       } catch (error) {[m
+         console.error('Error loading Parts:', error);[m
+         setError('Failed to load parts: ' + (error.response?.data?.message || error.message));[m

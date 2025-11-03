@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
 @Entity
-@Table(name = "document")
+@Table(name = "Document")
 public class Document {
     @Id
     private String id;
@@ -40,7 +40,7 @@ public class Document {
     private String creator;
     private LocalDateTime createTime = LocalDateTime.now();
     private String fileKey;
-    private String bomId;  // Related BOM ID
+    private String partId;  // Related Part ID (replaces bomId)
     
     // File metadata fields
     private String originalFilename;  // Original filename from user
@@ -150,12 +150,12 @@ public class Document {
         this.fileKey = fileKey;
     }
 
-    public String getBomId() {
-        return bomId;
+    public String getPartId() {
+        return partId;
     }
 
-    public void setBomId(String bomId) {
-        this.bomId = bomId;
+    public void setPartId(String partId) {
+        this.partId = partId;
     }
 
     public boolean isActive() {

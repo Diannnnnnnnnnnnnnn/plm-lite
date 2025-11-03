@@ -92,7 +92,7 @@ public class TaskWorkerHandler {
 
     @FeignClient(name = "document-service")
     public interface DocumentServiceClient {
-        @PostMapping("/api/documents/{id}/status")
+        @PostMapping("/api/v1/documents/{id}/status")
         void updateStatus(@PathVariable String id, @RequestBody Map<String, String> statusUpdate);
     }
 

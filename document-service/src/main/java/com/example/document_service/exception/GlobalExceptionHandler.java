@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -44,6 +45,23 @@ public class GlobalExceptionHandler {
             request.getDescription(false)
         );
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<?> handleNoResourceFoundException(NoResourceFoundException ex, WebRequest request) {
+        // Suppress verbose logging for known legacy workflow endpoint calls
+        if (ex.getMessage() != null && ex.getMessage().contains("api/documents")) {
+            logger.debug("Legacy workflow endpoint call (suppressed): {}", ex.getMessage());
+        } else {
+            logger.warn("Resource not found: {}", ex.getMessage());
+        }
+        ApiError error = new ApiError(
+            HttpStatus.NOT_FOUND.value(),
+            "Not Found",
+            "The requested resource was not found",
+            request.getDescription(false)
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)

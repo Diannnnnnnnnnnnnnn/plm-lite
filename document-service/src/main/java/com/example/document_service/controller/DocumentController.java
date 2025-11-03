@@ -237,9 +237,9 @@ public class DocumentController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/bom/{bomId}")
-    public List<DocumentResponse> getDocumentsByBomId(@PathVariable String bomId) {
-        List<Document> documents = documentService.getDocumentsByBomId(bomId);
+    @GetMapping("/part/{partId}")
+    public List<DocumentResponse> getDocumentsByPartId(@PathVariable String partId) {
+        List<Document> documents = documentService.getDocumentsByPartId(partId);
         return documents.stream()
                         .map(DocumentMapper::toResponse)
                         .collect(Collectors.toList());

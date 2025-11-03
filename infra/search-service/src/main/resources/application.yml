@@ -3,9 +3,12 @@ spring:
     name: search-service
   profiles:
     active: dev
+  cloud:
+    compatibility-verifier:
+      enabled: false
 
 server:
-  port: 8085
+  port: 8091
 
 ---
 spring:
@@ -47,10 +50,17 @@ spring:
 
 eureka:
   client:
+    enabled: false
     service-url:
       defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
 logging:
   level:

@@ -9,19 +9,21 @@ import java.util.List;
 
 public interface PartRepository extends JpaRepository<Part, String> {
     
+    @Query("SELECT p FROM Part p WHERE p.creator = ?1 AND p.deleted = false")
     List<Part> findByCreator(String creator);
     
+    @Query("SELECT p FROM Part p WHERE p.stage = ?1 AND p.deleted = false")
     List<Part> findByStage(Stage stage);
     
-    @Query("SELECT p FROM Part p WHERE p.title LIKE %?1%")
+    @Query("SELECT p FROM Part p WHERE p.title LIKE %?1% AND p.deleted = false")
     List<Part> findByTitleContaining(String title);
     
-    @Query("SELECT p FROM Part p WHERE p.level = ?1")
+    @Query("SELECT p FROM Part p WHERE p.level = ?1 AND p.deleted = false")
     List<Part> findByLevel(String level);
     
-    @Query("SELECT DISTINCT p FROM Part p JOIN p.childUsages cu WHERE cu.parent.id = ?1")
+    @Query("SELECT DISTINCT cu.child FROM PartUsage cu WHERE cu.parent.id = ?1 AND cu.child.deleted = false")
     List<Part> findChildrenOf(String parentId);
     
-    @Query("SELECT DISTINCT p FROM Part p JOIN p.parentUsages pu WHERE pu.child.id = ?1")
+    @Query("SELECT DISTINCT pu.parent FROM PartUsage pu WHERE pu.child.id = ?1 AND pu.parent.deleted = false")
     List<Part> findParentsOf(String childId);
 }

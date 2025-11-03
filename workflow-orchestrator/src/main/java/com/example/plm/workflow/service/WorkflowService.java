@@ -108,11 +108,50 @@ public class WorkflowService {
 
     /**
      * Start Change Approval Workflow in Camunda
+     * @param changeId The change UUID
+     * @param changeTitle The change title
+     * @param creator The creator username
+     * @param reviewerId The reviewer user ID or username
+     * @return The Zeebe process instance key
      */
-    public String startChangeApprovalWorkflow(String changeId, String initiatorId) {
+    public String startChangeApprovalWorkflow(
+            String changeId,
+            String changeTitle,
+            String creator,
+            String reviewerId) {
+        
         System.out.println("🚀 Starting change approval workflow for: " + changeId);
-        // TODO: Implement when ready
-        return "dev-workflow-" + changeId;
+        System.out.println("   Title: " + changeTitle);
+        System.out.println("   Creator: " + creator);
+        System.out.println("   Reviewer: " + reviewerId);
+
+        try {
+            // Prepare workflow variables
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("changeId", changeId);
+            variables.put("changeTitle", changeTitle);
+            variables.put("creator", creator);
+            variables.put("reviewerId", reviewerId);
+
+            // Start the workflow process
+            ProcessInstanceEvent processInstance = zeebeClient.newCreateInstanceCommand()
+                    .bpmnProcessId("change-approval")
+                    .latestVersion()
+                    .variables(variables)
+                    .send()
+                    .join();
+
+            String processInstanceKey = String.valueOf(processInstance.getProcessInstanceKey());
+            System.out.println("   ✓ Change workflow started successfully!");
+            System.out.println("   Process Instance Key: " + processInstanceKey);
+
+            return processInstanceKey;
+
+        } catch (Exception e) {
+            System.err.println("❌ Failed to start change approval workflow: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to start workflow", e);
+        }
     }
 
     /**

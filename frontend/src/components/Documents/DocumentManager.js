@@ -489,9 +489,10 @@ export default function DocumentManager() {
       return;
     }
 
-    if (!newDocument.documentNumber) {
-      alert('Please provide a Document Number (Master ID). This is a unique identifier for your document.');
-      return;
+    // Document Number is now optional - will be auto-generated if not provided
+    if (newDocument.documentNumber && newDocument.documentNumber.trim() === '') {
+      // Clear empty string to null for backend
+      newDocument.documentNumber = null;
     }
 
     try {
@@ -1269,14 +1270,13 @@ export default function DocumentManager() {
           />
           <TextField
             fullWidth
-            label="Document Number (Master ID)"
+            label="Document Number (Master ID) - Optional"
             variant="outlined"
             value={newDocument.documentNumber}
             onChange={(e) => setNewDocument({...newDocument, documentNumber: e.target.value})}
             margin="normal"
-            placeholder="e.g., SPEC-001, TD-001"
-            required
-            helperText="This is a unique identifier for your document. It cannot be reused."
+            placeholder="e.g., SPEC-001, TD-001 (leave empty to auto-generate)"
+            helperText="Optional: Leave empty to auto-generate (e.g., DOC-1234). If provided, it must be unique."
           />
           <TextField
             fullWidth

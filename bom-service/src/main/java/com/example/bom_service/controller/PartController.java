@@ -3,7 +3,6 @@ package com.example.bom_service.controller;
 import com.example.bom_service.dto.request.CreatePartRequest;
 import com.example.bom_service.dto.request.AddPartUsageRequest;
 import com.example.bom_service.dto.request.LinkPartToDocumentRequest;
-import com.example.bom_service.dto.response.BomHierarchyResponse;
 import com.example.bom_service.dto.response.PartResponse;
 import com.example.bom_service.model.Part;
 import com.example.bom_service.model.PartUsage;
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/parts")
+@RequestMapping("/api/v1/parts")
 public class PartController {
 
     private final PartService partService;
@@ -90,6 +89,14 @@ public class PartController {
         return ResponseEntity.noContent().build();
     }
 
+    // Elasticsearch operations
+    
+    @PostMapping("/elasticsearch/reindex")
+    public ResponseEntity<String> reindexAllParts() {
+        int count = partService.reindexAllParts();
+        return ResponseEntity.ok("Successfully re-indexed " + count + " parts to Elasticsearch");
+    }
+
     // BOM hierarchy operations
     
     @PostMapping("/usage")
@@ -129,12 +136,6 @@ public class PartController {
                 .map(this::toPartResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping("/{id}/bom-hierarchy")
-    public ResponseEntity<BomHierarchyResponse> getBomHierarchy(@PathVariable String id) {
-        BomHierarchyResponse hierarchy = partService.getBomHierarchy(id);
-        return ResponseEntity.ok(hierarchy);
     }
 
     // Document-Part linking operations
@@ -178,9 +179,10 @@ public class PartController {
         response.setDeleted(part.isDeleted());
         response.setDeleteTime(part.getDeleteTime());
         
-        // Add child usages if available
+        // Add child usages if available, excluding deleted parts
         if (part.getChildUsages() != null) {
             List<PartResponse.PartUsageResponse> usageResponses = part.getChildUsages().stream()
+                    .filter(usage -> !usage.getChild().isDeleted())
                     .map(this::toPartUsageResponse)
                     .collect(Collectors.toList());
             response.setChildUsages(usageResponses);

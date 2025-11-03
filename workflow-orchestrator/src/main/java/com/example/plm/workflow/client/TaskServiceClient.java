@@ -9,12 +9,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Feign Client for Task Service
- * Note: task-service uses form parameters, not JSON body
  */
 @FeignClient(name = "task-service", url = "http://localhost:8082")
 public interface TaskServiceClient {
     
-    @PostMapping("/tasks/create")
+    // Legacy method - deprecated (uses form params, doesn't match task-service API)
+    @PostMapping("/api/tasks/create")
+    @Deprecated
     TaskDTO createTask(
         @RequestParam("name") String name,
         @RequestParam("description") String description,
@@ -22,8 +23,13 @@ public interface TaskServiceClient {
         @RequestParam(value = "assignedTo", required = false) String assignedTo
     );
     
-    // NEW: Create task with two-stage review information
-    @PostMapping("/tasks/create")
+    // NEW: Proper JSON-based task creation matching task-service API
+    @PostMapping("/api/tasks")
+    TaskResponse createTaskWithContext(@RequestBody CreateTaskRequest request);
+    
+    // Legacy method for two-stage review
+    @PostMapping("/api/tasks/create")
+    @Deprecated
     TaskDTO createTaskWithReviewInfo(
         @RequestParam("name") String name,
         @RequestParam("description") String description,
@@ -34,15 +40,108 @@ public interface TaskServiceClient {
         @RequestParam(value = "reviewStage", required = false) String reviewStage
     );
     
-    @PutMapping("/tasks/{id}")
+    @PutMapping("/api/tasks/{id}")
     TaskDTO updateTaskWithJobKey(
         @PathVariable("id") Long id,
         @RequestBody TaskDTO task
     );
     
     /**
-     * Simple DTO for task response
+     * Request DTO for creating tasks with full context
      */
+    class CreateTaskRequest {
+        private String taskName;
+        private String taskDescription;
+        private String taskType;  // Use String for simplicity
+        private String assignedTo;
+        private String assignedBy;
+        private String contextType;  // e.g., "CHANGE", "DOCUMENT"
+        private String contextId;    // e.g., change ID or document ID
+        private String workflowId;
+        private Integer priority;
+
+        public CreateTaskRequest() {}
+
+        public String getTaskName() { return taskName; }
+        public void setTaskName(String taskName) { this.taskName = taskName; }
+        
+        public String getTaskDescription() { return taskDescription; }
+        public void setTaskDescription(String taskDescription) { this.taskDescription = taskDescription; }
+        
+        public String getTaskType() { return taskType; }
+        public void setTaskType(String taskType) { this.taskType = taskType; }
+        
+        public String getAssignedTo() { return assignedTo; }
+        public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+        
+        public String getAssignedBy() { return assignedBy; }
+        public void setAssignedBy(String assignedBy) { this.assignedBy = assignedBy; }
+        
+        public String getContextType() { return contextType; }
+        public void setContextType(String contextType) { this.contextType = contextType; }
+        
+        public String getContextId() { return contextId; }
+        public void setContextId(String contextId) { this.contextId = contextId; }
+        
+        public String getWorkflowId() { return workflowId; }
+        public void setWorkflowId(String workflowId) { this.workflowId = workflowId; }
+        
+        public Integer getPriority() { return priority; }
+        public void setPriority(Integer priority) { this.priority = priority; }
+    }
+
+    /**
+     * Response DTO from task service
+     */
+    class TaskResponse {
+        private String id;
+        private String taskName;
+        private String taskDescription;
+        private String taskType;
+        private String taskStatus;
+        private String assignedTo;
+        private String assignedBy;
+        private String contextType;
+        private String contextId;
+        private String workflowId;
+
+        public TaskResponse() {}
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        
+        public String getTaskName() { return taskName; }
+        public void setTaskName(String taskName) { this.taskName = taskName; }
+        
+        public String getTaskDescription() { return taskDescription; }
+        public void setTaskDescription(String taskDescription) { this.taskDescription = taskDescription; }
+        
+        public String getTaskType() { return taskType; }
+        public void setTaskType(String taskType) { this.taskType = taskType; }
+        
+        public String getTaskStatus() { return taskStatus; }
+        public void setTaskStatus(String taskStatus) { this.taskStatus = taskStatus; }
+        
+        public String getAssignedTo() { return assignedTo; }
+        public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+        
+        public String getAssignedBy() { return assignedBy; }
+        public void setAssignedBy(String assignedBy) { this.assignedBy = assignedBy; }
+        
+        public String getContextType() { return contextType; }
+        public void setContextType(String contextType) { this.contextType = contextType; }
+        
+        public String getContextId() { return contextId; }
+        public void setContextId(String contextId) { this.contextId = contextId; }
+        
+        public String getWorkflowId() { return workflowId; }
+        public void setWorkflowId(String workflowId) { this.workflowId = workflowId; }
+    }
+
+    /**
+     * Simple DTO for task response (LEGACY)
+     */
+    @Deprecated
     class TaskDTO {
         private Long id;
         private String name;

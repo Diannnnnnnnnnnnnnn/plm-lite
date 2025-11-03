@@ -105,7 +105,7 @@ public class DocumentWorkflowWorkers {
                 .open();
         System.out.println("   ✓ Registered: wait-for-technical-review");
 
-        System.out.println("✅ All job workers registered successfully!\n");
+        System.out.println("✅ Document workflow workers registered successfully!\n");
     }
 
     /**

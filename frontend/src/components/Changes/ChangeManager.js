@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ReviewerSelectionDialog from '../Documents/ReviewerSelectionDialog';
+import SingleReviewerDialog from './SingleReviewerDialog';
 import {
   Box,
   Typography,
@@ -40,6 +40,7 @@ import {
 } from '@mui/material';
 import documentService from '../../services/documentService';
 import bomService from '../../services/bomService';
+import partService from '../../services/partService';
 import changeService from '../../services/changeService';
 import {
   Add as AddIcon,
@@ -450,17 +451,36 @@ export default function ChangeManager() {
     let enrichedChange = { ...change };
 
     try {
-      // Fetch BOM data if product ID exists
-      if (change.product) {
+      // Fetch BOM data if bomIds exist
+      if (change.bomIds && change.bomIds.length > 0) {
         try {
-          const bom = await bomService.getBomById(change.product);
+          const bomId = change.bomIds[0]; // Get first BOM ID
+          const bom = await bomService.getBomById(bomId);
           enrichedChange.productName = bom.description || bom.documentId;
           enrichedChange.productData = bom; // Store full BOM data
         } catch (error) {
           console.error('Error fetching BOM:', error);
-          enrichedChange.productName = change.product;
+          enrichedChange.productName = change.bomIds[0];
           enrichedChange.productData = null;
         }
+      }
+      // Fetch Part data if partIds exist
+      else if (change.partIds && change.partIds.length > 0) {
+        try {
+          const partId = change.partIds[0]; // Get first Part ID
+          const part = await partService.getPartById(partId);
+          enrichedChange.productName = part.description || part.partNumber;
+          enrichedChange.productData = part; // Store full Part data
+        } catch (error) {
+          console.error('Error fetching Part:', error);
+          enrichedChange.productName = change.partIds[0];
+          enrichedChange.productData = null;
+        }
+      }
+      // Fallback to product field for backward compatibility
+      else if (change.product) {
+        enrichedChange.productName = change.product;
+        enrichedChange.productData = null;
       }
 
       // Fetch document data if changeDocument ID exists
@@ -565,13 +585,14 @@ export default function ChangeManager() {
 
   const handleReviewerSelection = async (reviewerIds) => {
     try {
-      const reviewData = {
+      // reviewerIds is already an array from SingleReviewerDialog
+      const reviewPayload = {
         user: getCurrentUsername(),
         reviewerIds: reviewerIds
       };
 
-      console.log('Submitting change for review:', changeToReview, 'with reviewers:', reviewerIds);
-      await changeService.submitForReview(changeToReview, reviewData);
+      console.log('Submitting change for review:', changeToReview, 'with reviewer:', reviewerIds);
+      await changeService.submitForReview(changeToReview, reviewPayload);
 
       await loadChanges();
       setChangeDetailsOpen(false);
@@ -605,11 +626,11 @@ export default function ChangeManager() {
     try {
       setLoading(true);
       console.log('Deleting change:', changeId);
-      // Add delete API call when backend implements it
-      // await changeService.deleteChange(changeId);
+      await changeService.deleteChange(changeId);
       await loadChanges();
       setChangeDetailsOpen(false);
       handleMenuClose();
+      // Success - reload will show updated list
     } catch (error) {
       console.error('Error deleting change:', error);
       setError('Failed to delete change: ' + (error.response?.data?.message || error.message));
@@ -1838,11 +1859,10 @@ export default function ChangeManager() {
       </Dialog>
 
       {/* Reviewer Selection Dialog */}
-      <ReviewerSelectionDialog
+      <SingleReviewerDialog
         open={reviewerDialogOpen}
         onClose={() => setReviewerDialogOpen(false)}
         onSubmit={handleReviewerSelection}
-        documentId={changeToReview}
       />
 
       {/* BOM Details Dialog */}

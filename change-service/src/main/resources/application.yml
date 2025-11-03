@@ -6,9 +6,9 @@ spring:
     name: change-service
 
   profiles:
-    active: dev
+    active: default  # Options: default (MySQL), dev (H2)
 
-  # MySQL Configuration
+  # MySQL Configuration (Default Profile)
   datasource:
     url: jdbc:mysql://localhost:3306/plm_change_db?createDatabaseIfNotExist=true&serverTimezone=UTC
     username: plm_user
@@ -26,6 +26,39 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+        auto_quote_keyword: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # Neo4j Configuration
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: password
+
+  # Elasticsearch Configuration
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 30s
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+
+  # Cloud Configuration
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+# Eureka Configuration (disabled for now)
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
 
 ---
 # Development Profile
@@ -57,6 +90,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
+        globally_quoted_identifiers: true
 
   # Disable Neo4j and Elasticsearch in dev mode
   autoconfigure:
@@ -71,7 +105,7 @@ spring:
     uri: bolt://localhost:7687
     authentication:
       username: neo4j
-      password: neo4j_password
+      password: password
 
   # Elasticsearch Configuration
   elasticsearch:
@@ -87,17 +121,7 @@ spring:
       client:
         config:
           document-service:
-            url: http://localhost:8082
-
-# Eureka Configuration
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
+            url: http://localhost:8081
 
 # Management Configuration
 management:

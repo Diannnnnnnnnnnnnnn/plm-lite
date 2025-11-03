@@ -25,7 +25,16 @@ import {
   Badge,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Table,
+  TableBody,
+  TableRow,
+  TableCell
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -36,108 +45,15 @@ import {
   ChangeHistory as ChangeIcon,
   FilterList as FilterIcon,
   Clear as ClearIcon,
-  ExpandMore as ExpandMoreIcon
+  ExpandMore as ExpandMoreIcon,
+  Category as PartIcon
 } from '@mui/icons-material';
-
-// Mock data - in a real app, this would come from your backend
-const mockData = {
-  documents: [
-    {
-      id: 'DOC-001',
-      title: 'Product Specification v2.1.pdf',
-      type: 'document',
-      stage: 'PRODUCTION',
-      status: 'APPROVED',
-      creator: 'John Doe',
-      createTime: '2024-01-15T08:00:00',
-      description: 'Detailed product specifications for motor assembly'
-    },
-    {
-      id: 'DOC-002',
-      title: 'Technical Drawing TD-001.dwg',
-      type: 'document',
-      stage: 'DESIGN',
-      status: 'DRAFT',
-      creator: 'Jane Smith',
-      createTime: '2024-01-16T10:30:00',
-      description: 'CAD drawing for motor housing component'
-    }
-  ],
-  tasks: [
-    {
-      id: 'TASK-001',
-      taskName: 'Design Review for Motor Assembly',
-      type: 'task',
-      taskDescription: 'Complete technical review of the motor assembly design documents',
-      taskStatus: 'IN_PROGRESS',
-      priority: 3,
-      assignedTo: 'John Doe',
-      dueDate: '2024-01-20T10:00:00'
-    },
-    {
-      id: 'TASK-002',
-      taskName: 'BOM Validation',
-      type: 'task',
-      taskDescription: 'Validate bill of materials for accuracy and cost optimization',
-      taskStatus: 'TODO',
-      priority: 2,
-      assignedTo: 'Sarah Wilson',
-      dueDate: '2024-01-25T15:00:00'
-    }
-  ],
-  boms: [
-    {
-      id: 'BOM-001',
-      description: 'Electric Motor Assembly',
-      type: 'bom',
-      stage: 'PRODUCTION',
-      status: 'ACTIVE',
-      creator: 'John Doe',
-      createTime: '2024-01-15T08:00:00',
-      itemCount: 12
-    },
-    {
-      id: 'BOM-002',
-      description: 'Control Panel Assembly',
-      type: 'bom',
-      stage: 'DESIGN',
-      status: 'DRAFT',
-      creator: 'Jane Smith',
-      createTime: '2024-01-14T08:00:00',
-      itemCount: 8
-    }
-  ],
-  changes: [
-    {
-      id: 'CHG-001',
-      title: 'Motor Assembly Design Update',
-      type: 'change',
-      stage: 'DESIGN',
-      changeClass: 'Major',
-      status: 'DRAFT',
-      creator: 'John Doe',
-      createTime: '2024-01-15T08:00:00',
-      changeReason: 'Performance improvement based on customer feedback'
-    },
-    {
-      id: 'CHG-002',
-      title: 'PCB Layout Modification',
-      type: 'change',
-      stage: 'DEVELOPMENT',
-      changeClass: 'Minor',
-      status: 'IN_REVIEW',
-      creator: 'Jane Smith',
-      createTime: '2024-01-14T09:30:00',
-      changeReason: 'Component obsolescence replacement'
-    }
-  ]
-};
 
 const getItemIcon = (type) => {
   switch (type) {
     case 'document': return <DocumentIcon color="primary" />;
     case 'task': return <TaskIcon color="secondary" />;
-    case 'bom': return <BOMIcon color="success" />;
+    case 'part': return <PartIcon color="info" />;
     case 'change': return <ChangeIcon color="warning" />;
     default: return <SearchIcon />;
   }
@@ -158,6 +74,8 @@ const getStatusColor = (status) => {
   }
 };
 
+const SEARCH_API_URL = 'http://localhost:8091/api/v1/search';
+
 export default function GlobalSearch() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -165,31 +83,77 @@ export default function GlobalSearch() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [currentTab, setCurrentTab] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [error, setError] = useState(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-      if (searchTerm) {
-        setIsSearching(true);
-        // Simulate API delay
-        setTimeout(() => setIsSearching(false), 300);
-      }
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Combine all data sources
-  const allData = useMemo(() => {
-    return [
-      ...mockData.documents,
-      ...mockData.tasks,
-      ...mockData.boms,
-      ...mockData.changes
-    ];
-  }, []);
+  // Fetch search results from API
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      setIsSearching(true);
+      setError(null);
+      
+      const url = `${SEARCH_API_URL}?q=${encodeURIComponent(debouncedSearchTerm)}`;
+      
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Search service unavailable');
+          }
+          return response.json();
+        })
+        .then(data => {
+          setSearchResults(data);
+          setIsSearching(false);
+        })
+        .catch(err => {
+          console.error('Search error:', err);
+          setError('Failed to fetch search results. Please try again.');
+          setIsSearching(false);
+        });
+    } else {
+      setSearchResults(null);
+    }
+  }, [debouncedSearchTerm]);
 
-  // Filter and search data
+  // Combine all data sources from API results
+  const allData = useMemo(() => {
+    if (!searchResults) return [];
+    
+    // Map API results to frontend format (convert type to lowercase)
+    const documents = (searchResults.documents || []).map(doc => ({
+      ...doc,
+      type: doc.type?.toLowerCase() || 'document'
+    }));
+    
+    const tasks = (searchResults.tasks || []).map(task => ({
+      ...task,
+      type: task.type?.toLowerCase() || 'task'
+    }));
+    
+    const parts = (searchResults.parts || []).map(part => ({
+      ...part,
+      type: part.type?.toLowerCase() || 'part'
+    }));
+    
+    const changes = (searchResults.changes || []).map(change => ({
+      ...change,
+      type: change.type?.toLowerCase() || 'change'
+    }));
+    
+    return [...documents, ...tasks, ...parts, ...changes];
+  }, [searchResults]);
+
+  // Filter data (filtering already done by API, but add client-side filters)
   const filteredResults = useMemo(() => {
     if (!debouncedSearchTerm) return [];
 
@@ -208,29 +172,6 @@ export default function GlobalSearch() {
       );
     }
 
-    // Search across all relevant fields
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    filtered = filtered.filter(item => {
-      const searchFields = [
-        item.title,
-        item.taskName,
-        item.description,
-        item.taskDescription,
-        item.creator,
-        item.assignedTo,
-        item.id,
-        item.stage,
-        item.status,
-        item.taskStatus,
-        item.changeReason,
-        item.changeClass
-      ].filter(Boolean);
-
-      return searchFields.some(field =>
-        field.toLowerCase().includes(searchLower)
-      );
-    });
-
     return filtered;
   }, [allData, debouncedSearchTerm, selectedCategory, selectedStatus]);
 
@@ -239,7 +180,7 @@ export default function GlobalSearch() {
     const groups = {
       document: [],
       task: [],
-      bom: [],
+      part: [],
       change: []
     };
 
@@ -264,8 +205,29 @@ export default function GlobalSearch() {
     setSelectedStatus('all');
   };
 
+  const handleItemClick = (item) => {
+    setSelectedItem(item);
+    setDetailDialogOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailDialogOpen(false);
+    setSelectedItem(null);
+  };
+
   const renderResultItem = (item) => (
-    <ListItem key={item.id} sx={{ py: 1, px: 0 }}>
+    <ListItem 
+      key={item.id} 
+      sx={{ 
+        py: 1, 
+        px: 0,
+        cursor: 'pointer',
+        '&:hover': {
+          backgroundColor: 'action.hover'
+        }
+      }}
+      onClick={() => handleItemClick(item)}
+    >
       <ListItemIcon sx={{ minWidth: 40 }}>
         {getItemIcon(item.type)}
       </ListItemIcon>
@@ -276,19 +238,21 @@ export default function GlobalSearch() {
               {item.title || item.taskName || item.description}
             </Typography>
             <Typography variant="caption" color="textSecondary">
-              {item.id} • {item.creator || item.assignedTo}
+              {item.id}{(item.creator || item.assignee) && ` • ${item.creator || item.assignee}`}
             </Typography>
           </Box>
         }
         secondary={
           <Box sx={{ mt: 0.5 }}>
             <Box display="flex" gap={0.5} flexWrap="wrap">
-              <Chip
-                label={item.status || item.taskStatus}
-                color={getStatusColor(item.status || item.taskStatus)}
-                size="small"
-                sx={{ height: 20, fontSize: '0.7rem' }}
-              />
+              {(item.status || item.taskStatus) && (
+                <Chip
+                  label={item.status || item.taskStatus}
+                  color={getStatusColor(item.status || item.taskStatus)}
+                  size="small"
+                  sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+              )}
               {item.stage && (
                 <Chip
                   label={item.stage}
@@ -309,6 +273,24 @@ export default function GlobalSearch() {
             <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5, fontSize: '0.8rem' }}>
               {item.taskDescription || item.changeReason || item.description}
             </Typography>
+            {item.type === 'bom' && item.items && item.items.length > 0 && (
+              <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #e0e0e0' }}>
+                <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
+                  Parts ({item.items.length}):
+                </Typography>
+                {item.items.slice(0, 5).map((bomItem, idx) => (
+                  <Typography key={idx} variant="caption" display="block" color="textSecondary" sx={{ fontSize: '0.75rem' }}>
+                    • {bomItem.partTitle || bomItem.partId} 
+                    {bomItem.quantity && ` (${bomItem.quantity}${bomItem.unit ? ' ' + bomItem.unit : ''})`}
+                  </Typography>
+                ))}
+                {item.items.length > 5 && (
+                  <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem', fontStyle: 'italic' }}>
+                    ...and {item.items.length - 5} more
+                  </Typography>
+                )}
+              </Box>
+            )}
           </Box>
         }
       />
@@ -319,7 +301,7 @@ export default function GlobalSearch() {
     { label: 'All', count: totalResults },
     { label: 'Documents', count: groupedResults.document.length },
     { label: 'Tasks', count: groupedResults.task.length },
-    { label: 'BOMs', count: groupedResults.bom.length },
+    { label: 'Parts', count: groupedResults.part.length },
     { label: 'Changes', count: groupedResults.change.length }
   ];
 
@@ -368,7 +350,7 @@ export default function GlobalSearch() {
                 <MenuItem value="all">All Categories</MenuItem>
                 <MenuItem value="document">Documents</MenuItem>
                 <MenuItem value="task">Tasks</MenuItem>
-                <MenuItem value="bom">BOMs</MenuItem>
+                <MenuItem value="part">Parts</MenuItem>
                 <MenuItem value="change">Changes</MenuItem>
               </Select>
             </FormControl>
@@ -417,9 +399,21 @@ export default function GlobalSearch() {
         </Box>
       )}
 
+      {/* Error State */}
+      {error && (
+        <Paper sx={{ p: 3, mb: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
+          <Typography variant="body1">
+            ⚠️ {error}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Make sure the Search Service is running on port 8091.
+          </Typography>
+        </Paper>
+      )}
+
       {/* Results */}
       <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-        {debouncedSearchTerm && !isSearching && (
+        {debouncedSearchTerm && !isSearching && !error && (
           <>
             {totalResults > 0 ? (
               <>
@@ -479,7 +473,7 @@ export default function GlobalSearch() {
                   )}
 
                   {currentTab === 3 && (
-                    <List>{groupedResults.bom.map(renderResultItem)}</List>
+                    <List>{groupedResults.part.map(renderResultItem)}</List>
                   )}
 
                   {currentTab === 4 && (
@@ -510,11 +504,163 @@ export default function GlobalSearch() {
               Global Search
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Search across documents, tasks, BOMs, and changes all in one place
+              Search across documents, tasks, parts, and changes all in one place
             </Typography>
           </Paper>
         )}
       </Box>
+
+      {/* Detail Dialog */}
+      <Dialog
+        open={detailDialogOpen}
+        onClose={handleCloseDetail}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedItem && (
+          <>
+            <DialogTitle>
+              <Box display="flex" alignItems="center" gap={1}>
+                {getItemIcon(selectedItem.type)}
+                <Typography variant="h6">
+                  {selectedItem.title || selectedItem.taskName || selectedItem.description}
+                </Typography>
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              <Table size="small">
+                <TableBody>
+                  <TableRow>
+                    <TableCell component="th" sx={{ fontWeight: 'bold', width: '30%' }}>
+                      ID
+                    </TableCell>
+                    <TableCell>{selectedItem.id}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                      Type
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={selectedItem.type.toUpperCase()} 
+                        size="small" 
+                        color="primary"
+                      />
+                    </TableCell>
+                  </TableRow>
+                  {selectedItem.description && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Description
+                      </TableCell>
+                      <TableCell>{selectedItem.description}</TableCell>
+                    </TableRow>
+                  )}
+                  {(selectedItem.status || selectedItem.taskStatus) && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Status
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={selectedItem.status || selectedItem.taskStatus} 
+                          size="small"
+                          color={getStatusColor(selectedItem.status || selectedItem.taskStatus)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.stage && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Stage
+                      </TableCell>
+                      <TableCell>{selectedItem.stage}</TableCell>
+                    </TableRow>
+                  )}
+                  {(selectedItem.creator || selectedItem.assignee) && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        {selectedItem.type === 'task' ? 'Assignee' : 'Creator'}
+                      </TableCell>
+                      <TableCell>{selectedItem.creator || selectedItem.assignee}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.level && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Level
+                      </TableCell>
+                      <TableCell>{selectedItem.level}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.documentNumber && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Document Number
+                      </TableCell>
+                      <TableCell>{selectedItem.documentNumber}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.category && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Category
+                      </TableCell>
+                      <TableCell>{selectedItem.category}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.changeClass && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Change Class
+                      </TableCell>
+                      <TableCell>{selectedItem.changeClass}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.changeReason && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Change Reason
+                      </TableCell>
+                      <TableCell>{selectedItem.changeReason}</TableCell>
+                    </TableRow>
+                  )}
+                  {selectedItem.score !== undefined && (
+                    <TableRow>
+                      <TableCell component="th" sx={{ fontWeight: 'bold' }}>
+                        Search Score
+                      </TableCell>
+                      <TableCell>{selectedItem.score.toFixed(4)}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDetail}>Close</Button>
+              <Button 
+                variant="contained" 
+                onClick={() => {
+                  // Navigate to detail page based on type
+                  const routes = {
+                    'document': `/documents/${selectedItem.id}`,
+                    'task': `/tasks/${selectedItem.id}`,
+                    'part': `/bom/${selectedItem.id}`,
+                    'change': `/changes/${selectedItem.id}`
+                  };
+                  const route = routes[selectedItem.type];
+                  if (route) {
+                    window.location.href = route;
+                  }
+                }}
+              >
+                View Full Details
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }

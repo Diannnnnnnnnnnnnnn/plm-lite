@@ -3,7 +3,6 @@ package com.example.bom_service.service;
 import com.example.bom_service.dto.request.CreatePartRequest;
 import com.example.bom_service.dto.request.AddPartUsageRequest;
 import com.example.bom_service.dto.request.LinkPartToDocumentRequest;
-import com.example.bom_service.dto.response.BomHierarchyResponse;
 import com.example.bom_service.model.Part;
 import com.example.bom_service.model.PartUsage;
 import com.example.bom_service.model.DocumentPartLink;
@@ -23,13 +22,15 @@ public interface PartService {
     Part updatePartStage(String partId, Stage stage);
     void deletePart(String id);
     
+    // Elasticsearch operations
+    int reindexAllParts();
+    
     // BOM hierarchy operations
     PartUsage addPartUsage(AddPartUsageRequest request);
     void removePartUsage(String parentPartId, String childPartId);
     void updatePartUsageQuantity(String parentPartId, String childPartId, Integer quantity);
     List<Part> getChildParts(String parentPartId);
     List<Part> getParentParts(String childPartId);
-    BomHierarchyResponse getBomHierarchy(String rootPartId);
     
     // Document-Part linking operations
     DocumentPartLink linkPartToDocument(LinkPartToDocumentRequest request);

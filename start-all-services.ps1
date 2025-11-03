@@ -52,6 +52,7 @@ Start-Service -Name "Change Service" -Path "$rootDir\change-service" -Command "m
 Start-Service -Name "Document Service" -Path "$rootDir\document-service" -Command "mvn spring-boot:run" -Port 8081
 Start-Service -Name "Task Service" -Path "$rootDir\task-service" -Command "mvn spring-boot:run" -Port 8082
 Start-Service -Name "Workflow Orchestrator" -Path "$rootDir\workflow-orchestrator" -Command "mvn spring-boot:run" -Port 8086
+Start-Service -Name "Search Service" -Path "$rootDir\infra\search-service" -Command "mvn spring-boot:run" -Port 8091
 
 Write-Host "`nWaiting for backend services to initialize (60 seconds)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 60
@@ -73,6 +74,7 @@ Write-Host "  - Task Service:          http://localhost:8082"
 Write-Host "  - Change Service:        http://localhost:8084"
 Write-Host "  - Workflow Orchestrator: http://localhost:8086"
 Write-Host "  - BOM Service:           http://localhost:8089"
+Write-Host "  - Search Service:        http://localhost:8091"
 
 Write-Host "`nInfrastructure:" -ForegroundColor Cyan
 Write-Host "  - Redis Cache:           localhost:6379"

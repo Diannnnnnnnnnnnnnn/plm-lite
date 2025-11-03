@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,11 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.task_service.client.WorkflowOrchestratorClient;
+import com.example.task_service.dto.CreateTaskRequest;
+import com.example.task_service.dto.TaskResponse;
+import com.example.task_service.model.SignoffAction;
+import com.example.task_service.model.TaskSignoff;
+import com.example.task_service.model.neo4j.TaskNode;
+
+import jakarta.validation.Valid;
 
 
 
 @RestController
-@RequestMapping("/tasks")
+@RequestMapping("/api/tasks")  // Unified controller for all task operations
 public class TaskController {
 
     @Autowired
@@ -50,8 +58,23 @@ public class TaskController {
         return taskService.getTaskById(id);
     }
 
+    // NEW: Modern JSON-based task creation endpoint (accepts CreateTaskRequest)
+    // This endpoint is used by workflow-orchestrator and change-service
     @PostMapping
-    public Task addTask(@RequestBody Task task) {
+    public ResponseEntity<?> createTask(@Valid @RequestBody CreateTaskRequest request) {
+        try {
+            TaskResponse response = taskService.createTask(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            // If CreateTaskRequest fails, try legacy Task entity
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "Invalid request format: " + e.getMessage()));
+        }
+    }
+    
+    // LEGACY: Support for raw Task entity (kept for backward compatibility)
+    @PostMapping("/legacy")
+    public Task addTaskLegacy(@RequestBody Task task) {
         return taskService.addTask(task);
     }
 
@@ -182,5 +205,81 @@ public class TaskController {
                 .body("Deprecated: start workflows via workflow-orchestrator API.");
     }
 
+    @PostMapping("/migrate-columns")
+    public ResponseEntity<String> migrateTaskColumns() {
+        try {
+            int count = taskService.migrateTaskColumns();
+            return ResponseEntity.ok("Successfully migrated " + count + " tasks from old columns to new columns");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
+    }
+
+    // ==================== SIGNOFF ENDPOINTS ====================
+    
+    @PostMapping("/{id}/signoff")
+    public ResponseEntity<?> addSignoff(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> signoffRequest) {
+        try {
+            String userId = signoffRequest.get("userId");
+            String actionStr = signoffRequest.get("action");
+            String comments = signoffRequest.get("comments");
+            
+            if (userId == null || actionStr == null) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "userId and action are required"));
+            }
+            
+            SignoffAction action = SignoffAction.valueOf(actionStr.toUpperCase());
+            TaskSignoff signoff = taskService.addTaskSignoff(id, userId, action, comments);
+            
+            if (signoff == null) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Signoff feature not available"));
+            }
+            
+            return ResponseEntity.ok(signoff);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Invalid action. Must be: APPROVED, REJECTED, REVIEWED, or ACKNOWLEDGED"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/{id}/signoffs")
+    public ResponseEntity<List<TaskSignoff>> getTaskSignoffs(@PathVariable Long id) {
+        List<TaskSignoff> signoffs = taskService.getSignoffsForTask(id);
+        return ResponseEntity.ok(signoffs);
+    }
+    
+    @GetMapping("/signoffs/user/{userId}")
+    public ResponseEntity<List<TaskSignoff>> getUserSignoffs(@PathVariable String userId) {
+        List<TaskSignoff> signoffs = taskService.getSignoffsByUser(userId);
+        return ResponseEntity.ok(signoffs);
+    }
+
+    // ==================== NEO4J RELATIONSHIP ENDPOINTS ====================
+    
+    @GetMapping("/{id}/relationships")
+    public ResponseEntity<List<TaskNode>> getTaskRelationships(@PathVariable Long id) {
+        List<TaskNode> relationships = taskService.getTaskRelationships(String.valueOf(id));
+        return ResponseEntity.ok(relationships);
+    }
+    
+    @PostMapping("/{id}/sync-neo4j")
+    public ResponseEntity<String> syncTaskToNeo4j(@PathVariable Long id) {
+        Optional<Task> taskOpt = taskService.getTaskById(id);
+        if (taskOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        taskService.syncTaskToNeo4j(taskOpt.get());
+        return ResponseEntity.ok("Task synced to Neo4j successfully");
+    }
 
 }

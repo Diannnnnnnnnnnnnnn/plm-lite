@@ -1,62 +1,105 @@
 package com.example.task_service;
 
-import java.io.Serializable;  // Import Serializable interface
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.example.task_service.model.FileMetadata;
+import com.example.task_service.model.TaskType;
+import com.example.task_service.model.TaskStatus;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
-
-@Entity // JPA annotation to mark this as an entity for MySQL
-@Table(name = "tasks") // Optional: maps to the 'tasks' table in MySQL (default name will be lowercase 'tasks')
-public class Task implements Serializable { // Implement Serializable interface
-    private static final long serialVersionUID = 1L; // Add serialVersionUID for versioning
+@Entity
+@Table(name = "Task")
+public class Task implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-increment ID in MySQL
-    private Long id; // Auto-increment ID field
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
+    // Use task_name and task_description columns for consistency
+    @Column(name = "task_name")
     private String name;
     
-    @jakarta.persistence.Column(length = 1000) // Increase from default 255 to support detailed workflow descriptions
+    @Column(name = "task_description", length = 1000)
     private String description;
     
-    private Long userId; // Field to associate the task with a user
-    private String assignedTo; // Username of the person assigned to this task
-    private String taskStatus; // Task status: TODO, IN_PROGRESS, COMPLETED
-    private java.time.LocalDateTime createdAt; // Task creation timestamp
-    private java.time.LocalDateTime dueDate; // Task due date
-    private Long workflowJobKey; // Zeebe workflow job key for automatic sync
+    // Legacy fields
+    private Long userId;
+    private String assignedTo;
     
-    // Two-stage review fields
-    private String initialReviewer; // Username of the initial reviewer (1st stage)
-    private String technicalReviewer; // Username of the technical reviewer (2nd stage)
-    private String reviewStage; // Current review stage: INITIAL_REVIEW, TECHNICAL_REVIEW, or null
+    // New enum-based status (stores as String in DB)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_status")
+    private TaskStatus status;
+    
+    // Legacy string-based status for backward compatibility
+    @Column(name = "task_status_legacy", insertable = false, updatable = false)
+    private String taskStatus;
+    
+    // NEW: Task type
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type")
+    private TaskType taskType;
+    
+    // NEW: Assigned by (who created/assigned the task)
+    @Column(name = "assigned_by")
+    private String assignedBy;
+    
+    private LocalDateTime createdAt;
+    private LocalDateTime dueDate;
+    
+    // NEW: Updated timestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    // NEW: Priority
+    @Column(name = "priority")
+    private Integer priority;
+    
+    private Long workflowJobKey;
+    
+    // Two-stage review fields (legacy)
+    private String initialReviewer;
+    private String technicalReviewer;
+    private String reviewStage;
+    
+    // NEW: Parent task support for sub-tasks
+    @Column(name = "parent_task_id")
+    private Long parentTaskId;
+    
+    // NEW: Workflow ID (String for UUID support)
+    @Column(name = "workflow_id")
+    private String workflowId;
+    
+    // NEW: Context support (DOCUMENT, CHANGE, PART, etc.)
+    @Column(name = "context_type")
+    private String contextType;
+    
+    @Column(name = "context_id")
+    private String contextId;
 
-    //code for the relation of task and file
+    // File attachments
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
     private List<FileMetadata> files = new ArrayList<>();
 
     // Constructors
     public Task() {
-        this.taskStatus = "TODO"; // Default status
-        this.createdAt = java.time.LocalDateTime.now();
+        this.status = TaskStatus.TODO;
+        this.taskType = TaskType.GENERAL;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Task(String name, String description, Long userId) {
         this.name = name;
         this.description = description;
         this.userId = userId;
-        this.taskStatus = "TODO"; // Default status
-        this.createdAt = java.time.LocalDateTime.now();
+        this.status = TaskStatus.TODO;
+        this.taskType = TaskType.GENERAL;
+        this.createdAt = LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -92,28 +135,37 @@ public class Task implements Serializable { // Implement Serializable interface
         this.userId = userId;
     }
 
+    public TaskStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaskStatus status) {
+        this.status = status;
+    }
+
+    // Legacy getter for backward compatibility
     public String getTaskStatus() {
-        return taskStatus;
+        return status != null ? status.name() : null;
     }
 
+    // Legacy setter for backward compatibility
     public void setTaskStatus(String taskStatus) {
-        this.taskStatus = taskStatus;
+        if (taskStatus != null) {
+            try {
+                this.status = TaskStatus.valueOf(taskStatus);
+            } catch (IllegalArgumentException e) {
+                // Default to TODO if invalid status
+                this.status = TaskStatus.TODO;
+            }
+        }
     }
 
-    public java.time.LocalDateTime getCreatedAt() {
-        return createdAt;
+    public TaskType getTaskType() {
+        return taskType;
     }
 
-    public void setCreatedAt(java.time.LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public java.time.LocalDateTime getDueDate() {
-        return dueDate;
-    }
-
-    public void setDueDate(java.time.LocalDateTime dueDate) {
-        this.dueDate = dueDate;
+    public void setTaskType(TaskType taskType) {
+        this.taskType = taskType;
     }
 
     public String getAssignedTo() {
@@ -122,6 +174,46 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setAssignedTo(String assignedTo) {
         this.assignedTo = assignedTo;
+    }
+
+    public String getAssignedBy() {
+        return assignedBy;
+    }
+
+    public void setAssignedBy(String assignedBy) {
+        this.assignedBy = assignedBy;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDateTime dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Integer priority) {
+        this.priority = priority;
     }
 
     public List<FileMetadata> getFiles() {
@@ -140,7 +232,6 @@ public class Task implements Serializable { // Implement Serializable interface
         this.workflowJobKey = workflowJobKey;
     }
 
-    // Two-stage review getters and setters
     public String getInitialReviewer() {
         return initialReviewer;
     }
@@ -163,5 +254,51 @@ public class Task implements Serializable { // Implement Serializable interface
 
     public void setReviewStage(String reviewStage) {
         this.reviewStage = reviewStage;
+    }
+
+    public Long getParentTaskId() {
+        return parentTaskId;
+    }
+
+    public void setParentTaskId(Long parentTaskId) {
+        this.parentTaskId = parentTaskId;
+    }
+
+    public String getWorkflowId() {
+        return workflowId;
+    }
+
+    public void setWorkflowId(String workflowId) {
+        this.workflowId = workflowId;
+    }
+
+    public String getContextType() {
+        return contextType;
+    }
+
+    public void setContextType(String contextType) {
+        this.contextType = contextType;
+    }
+
+    public String getContextId() {
+        return contextId;
+    }
+
+    public void setContextId(String contextId) {
+        this.contextId = contextId;
+    }
+
+    // Lifecycle hooks
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
