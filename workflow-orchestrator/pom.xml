@@ -57,6 +57,13 @@
             <artifactId>zeebe-client-java</artifactId>
             <version>8.5.11</version>
         </dependency>
+        
+        <!-- Camunda Zeebe Spring Client (for @JobWorker annotation) -->
+        <dependency>
+            <groupId>io.camunda.spring</groupId>
+            <artifactId>spring-boot-starter-camunda</artifactId>
+            <version>8.5.11</version>
+        </dependency>
 
         <!-- Spring Cloud -->
         <dependency>

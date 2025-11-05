@@ -118,12 +118,14 @@ public class WorkflowService {
             String changeId,
             String changeTitle,
             String creator,
-            String reviewerId) {
+            String reviewerId,
+            String documentId) {
         
         System.out.println("🚀 Starting change approval workflow for: " + changeId);
         System.out.println("   Title: " + changeTitle);
         System.out.println("   Creator: " + creator);
         System.out.println("   Reviewer: " + reviewerId);
+        System.out.println("   Document: " + documentId);
 
         try {
             // Prepare workflow variables
@@ -132,6 +134,7 @@ public class WorkflowService {
             variables.put("changeTitle", changeTitle);
             variables.put("creator", creator);
             variables.put("reviewerId", reviewerId);
+            variables.put("documentId", documentId);
 
             // Start the workflow process
             ProcessInstanceEvent processInstance = zeebeClient.newCreateInstanceCommand()
@@ -173,6 +176,34 @@ public class WorkflowService {
             System.err.println("❌ Failed to complete task: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Failed to complete task", e);
+        }
+    }
+    
+    /**
+     * Publish a message to a workflow (used for intermediate catch events)
+     * @param messageName The name of the message (e.g., "change-review-completed")
+     * @param correlationKey The correlation key value (e.g., changeId)
+     * @param variables Variables to send with the message
+     */
+    public void publishMessage(String messageName, String correlationKey, Map<String, Object> variables) {
+        System.out.println("📨 Publishing message to workflow");
+        System.out.println("   Message Name: " + messageName);
+        System.out.println("   Correlation Key: " + correlationKey);
+        System.out.println("   Variables: " + variables);
+
+        try {
+            zeebeClient.newPublishMessageCommand()
+                    .messageName(messageName)
+                    .correlationKey(correlationKey)
+                    .variables(variables)
+                    .send()
+                    .join();
+            
+            System.out.println("   ✓ Message published successfully");
+        } catch (Exception e) {
+            System.err.println("❌ Failed to publish message: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to publish message", e);
         }
     }
 

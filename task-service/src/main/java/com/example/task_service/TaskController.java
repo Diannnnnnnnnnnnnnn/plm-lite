@@ -54,8 +54,10 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public Optional<Task> getTaskById(@PathVariable Long id) {
-        return taskService.getTaskById(id);
+    public ResponseEntity<Task> getTaskById(@PathVariable Long id) {
+        Optional<Task> task = taskService.getTaskById(id);
+        return task.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // NEW: Modern JSON-based task creation endpoint (accepts CreateTaskRequest)
@@ -82,6 +84,21 @@ public class TaskController {
     public Task updateTask(@PathVariable Long id, @RequestBody Task task) {
         return taskService.updateTask(id, task);
     }
+    
+    @PutMapping("/{id}/workflow-job-key")
+    public ResponseEntity<Void> updateTaskWorkflowJobKey(@PathVariable Long id, @RequestParam("jobKey") Long jobKey) {
+        Optional<Task> optionalTask = taskService.getTaskById(id);
+        if (optionalTask.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        Task task = optionalTask.get();
+        task.setWorkflowJobKey(jobKey);
+        taskService.updateTask(id, task);
+        
+        System.out.println("✓ Updated task " + id + " with workflow job key: " + jobKey);
+        return ResponseEntity.ok().build();
+    }
 
     @DeleteMapping("/{id}")
     public void deleteTask(@PathVariable Long id) {
@@ -102,27 +119,55 @@ public class TaskController {
         
         if (newStatus != null) {
             task.setTaskStatus(newStatus);
+            
+            // Set decision field based on approved parameter
+            if ("COMPLETED".equalsIgnoreCase(newStatus)) {
+                if ("true".equalsIgnoreCase(approved) || "approved".equalsIgnoreCase(approved)) {
+                    task.setDecision("APPROVED");
+                } else if ("false".equalsIgnoreCase(approved) || "rejected".equalsIgnoreCase(approved)) {
+                    task.setDecision("REJECTED");
+                } else if (comments != null) {
+                    // Use comments as decision if provided
+                    task.setDecision(comments.toUpperCase());
+                }
+            }
+            
             Task updatedTask = taskService.updateTask(id, task);
             
-            // ✅ AUTOMATIC WORKFLOW SYNC: If task is completed and has a workflow job key, complete the workflow!
-            if ("COMPLETED".equalsIgnoreCase(newStatus) && updatedTask.getWorkflowJobKey() != null) {
-                System.out.println("🔄 Auto-completing workflow job: " + updatedTask.getWorkflowJobKey());
-                System.out.println("   📥 Received approved parameter: '" + approved + "'");
-                try {
-                    Map<String, Object> workflowVariables = new HashMap<>();
-                    // Default to approved if not explicitly rejected
-                    boolean approvedValue = !"false".equalsIgnoreCase(approved) && !"rejected".equalsIgnoreCase(approved);
-                    workflowVariables.put("approved", approvedValue);
-                    workflowVariables.put("comments", comments != null ? comments : "Task completed");
-                    
-                    System.out.println("   📤 Sending to workflow - approved: " + approvedValue + ", comments: " + (comments != null ? comments : "Task completed"));
-                    
-                    workflowClient.completeWorkflowJob(updatedTask.getWorkflowJobKey(), workflowVariables);
-                    System.out.println("   ✅ Workflow job completed successfully!");
-                } catch (Exception e) {
-                    System.err.println("   ⚠️ Failed to complete workflow job: " + e.getMessage());
-                    System.err.println("   Task status updated, but workflow may need manual completion.");
-                    // Don't fail the task update if workflow completion fails
+            // ✅ AUTOMATIC WORKFLOW SYNC: If task is completed, notify workflow
+            if ("COMPLETED".equalsIgnoreCase(newStatus)) {
+                System.out.println("🔄 Task completed - notifying workflow");
+                System.out.println("   📥 Task Type: " + updatedTask.getTaskType() + ", Context: " + updatedTask.getContextType() + " / " + updatedTask.getContextId());
+                System.out.println("   📥 Decision: '" + updatedTask.getDecision() + "'");
+                
+                // Determine workflow variables
+                boolean approvedValue = "APPROVED".equalsIgnoreCase(updatedTask.getDecision());
+                Map<String, Object> workflowVariables = new HashMap<>();
+                workflowVariables.put("approved", approvedValue);
+                workflowVariables.put("decision", updatedTask.getDecision());
+                workflowVariables.put("comments", comments != null ? comments : "Task completed");
+                
+                // If this is a CHANGE task, publish message to change workflow
+                if ("CHANGE".equalsIgnoreCase(updatedTask.getContextType()) && updatedTask.getContextId() != null) {
+                    try {
+                        System.out.println("   📨 Publishing message: change-review-completed");
+                        System.out.println("   📨 Correlation Key (changeId): " + updatedTask.getContextId());
+                        workflowClient.publishMessage("change-review-completed", updatedTask.getContextId(), workflowVariables);
+                        System.out.println("   ✅ Workflow message published successfully!");
+                    } catch (Exception e) {
+                        System.err.println("   ⚠️ Failed to publish workflow message: " + e.getMessage());
+                        System.err.println("   Task status updated, but workflow may need manual completion.");
+                    }
+                }
+                // Legacy: If task has workflow job key (for document workflows), complete the job
+                else if (updatedTask.getWorkflowJobKey() != null) {
+                    try {
+                        System.out.println("   📤 Completing workflow job (legacy): " + updatedTask.getWorkflowJobKey());
+                        workflowClient.completeWorkflowJob(updatedTask.getWorkflowJobKey(), workflowVariables);
+                        System.out.println("   ✅ Workflow job completed successfully!");
+                    } catch (Exception e) {
+                        System.err.println("   ⚠️ Failed to complete workflow job: " + e.getMessage());
+                    }
                 }
             }
             

@@ -81,6 +81,10 @@ public class Task implements Serializable {
     
     @Column(name = "context_id")
     private String contextId;
+    
+    // Decision for review tasks (APPROVED, REJECTED, etc.)
+    @Column(name = "decision")
+    private String decision;
 
     // File attachments
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
@@ -286,6 +290,14 @@ public class Task implements Serializable {
 
     public void setContextId(String contextId) {
         this.contextId = contextId;
+    }
+
+    public String getDecision() {
+        return decision;
+    }
+
+    public void setDecision(String decision) {
+        this.decision = decision;
     }
 
     // Lifecycle hooks

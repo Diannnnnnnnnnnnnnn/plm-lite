@@ -73,6 +73,34 @@ public class ChangeController {
         }
     }
 
+    @PutMapping("/{changeId}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable String changeId,
+            @RequestBody java.util.Map<String, String> statusUpdate) {
+        try {
+            String statusStr = statusUpdate.get("status");
+            if (statusStr == null) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+            
+            Status status = Status.valueOf(statusStr);
+            
+            if (changeServiceDev != null) {
+                changeServiceDev.updateStatus(changeId, status);
+            } else {
+                changeService.updateStatus(changeId, status);
+            }
+            
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/{changeId}")
     public ResponseEntity<ChangeResponse> getChangeById(@PathVariable String changeId) {
         Optional<ChangeResponse> change = changeServiceDev != null ?
@@ -121,5 +149,22 @@ public class ChangeController {
             changeService.searchChangesElastic(query);
         return ResponseEntity.ok(changes);
     }
+
+    @DeleteMapping("/{changeId}")
+    public ResponseEntity<Void> deleteChange(@PathVariable String changeId) {
+        try {
+            if (changeServiceDev != null) {
+                changeServiceDev.deleteChange(changeId);
+            } else {
+                changeService.deleteChange(changeId);
+            }
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
+
 

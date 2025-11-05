@@ -29,14 +29,25 @@
       <bpmn:outgoing>Flow_ToReview</bpmn:outgoing>
     </bpmn:serviceTask>
     
-    <!-- WAIT FOR REVIEW -->
-    <bpmn:serviceTask id="ServiceTask_WaitForReview" name="Wait For&#10;Review">
+    <!-- WAIT FOR REVIEW - Message Intermediate Catch Event -->
+    <bpmn:intermediateCatchEvent id="IntermediateCatchEvent_WaitForReview" name="Wait For&#10;Review&#10;Decision">
       <bpmn:extensionElements>
-        <zeebe:taskDefinition type="wait-for-change-review" />
+        <zeebe:ioMapping>
+          <zeebe:output source="=approved" target="approved" />
+          <zeebe:output source="=decision" target="decision" />
+        </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_ToReview</bpmn:incoming>
       <bpmn:outgoing>Flow_ToDecision</bpmn:outgoing>
-    </bpmn:serviceTask>
+      <bpmn:messageEventDefinition messageRef="Message_ChangeReviewCompleted" />
+    </bpmn:intermediateCatchEvent>
+    
+    <!-- MESSAGE DEFINITION -->
+    <bpmn:message id="Message_ChangeReviewCompleted" name="change-review-completed">
+      <bpmn:extensionElements>
+        <zeebe:subscription correlationKey="=changeId" />
+      </bpmn:extensionElements>
+    </bpmn:message>
     
     <!-- EXCLUSIVE GATEWAY: APPROVE OR REJECT -->
     <bpmn:exclusiveGateway id="Gateway_Decision" name="Approved?" default="Flow_Rejected">
@@ -134,10 +145,12 @@
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       
-      <!-- Wait for Review -->
-      <bpmndi:BPMNShape id="Shape_Review" bpmnElement="ServiceTask_WaitForReview">
-        <dc:Bounds x="390" y="170" width="100" height="80" />
-        <bpmndi:BPMNLabel />
+      <!-- Wait for Review - Message Intermediate Catch Event -->
+      <bpmndi:BPMNShape id="Shape_Review" bpmnElement="IntermediateCatchEvent_WaitForReview">
+        <dc:Bounds x="422" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="410" y="235" width="60" height="40" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       
       <!-- Decision Gateway -->
@@ -191,11 +204,11 @@
       
       <bpmndi:BPMNEdge id="Edge_ToReview" bpmnElement="Flow_ToReview">
         <di:waypoint x="340" y="210" />
-        <di:waypoint x="390" y="210" />
+        <di:waypoint x="422" y="210" />
       </bpmndi:BPMNEdge>
       
       <bpmndi:BPMNEdge id="Edge_ToDecision" bpmnElement="Flow_ToDecision">
-        <di:waypoint x="490" y="210" />
+        <di:waypoint x="458" y="210" />
         <di:waypoint x="545" y="210" />
       </bpmndi:BPMNEdge>
       

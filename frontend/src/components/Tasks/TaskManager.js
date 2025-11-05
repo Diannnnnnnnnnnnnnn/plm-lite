@@ -629,20 +629,21 @@ export default function TaskManager() {
     try {
       // Check if this is a change review task or document review task
       if (isChangeReviewTask(selectedTaskForDetails)) {
-        // Handle change approval
+        // Handle change approval (workflow-managed)
+        // For workflow reviews, ONLY update task status - let workflow handle change status!
         const changeId = extractChangeIdFromTask(selectedTaskForDetails);
         if (!changeId) {
           alert('Cannot find change ID in task');
           return;
         }
 
+        console.log(`Approving change ${changeId} via workflow - updating task status to COMPLETED`);
+        
         try {
-          await changeService.approveChange(changeId);
-
-          // Mark task as completed with approval flag for workflow integration
+          // Mark task as completed with approval flag - workflow will handle the rest
           await taskService.updateTaskStatus(selectedTaskForDetails.id, 'COMPLETED', true, 'Approved');
 
-          alert('Change approved successfully!');
+          alert('Change approved successfully! The workflow will process the approval.');
           setTaskDetailsOpen(false);
 
           // Refresh tasks for current user only
@@ -653,13 +654,7 @@ export default function TaskManager() {
           }
         } catch (error) {
           console.error('Error approving change:', error);
-          if (error.response && error.response.status === 404) {
-            alert(`Change not found (ID: ${changeId}). The change may have been deleted or the task contains an invalid change reference.`);
-          } else if (error.response && error.response.status === 400) {
-            alert('Change cannot be approved. It may not be in review status.');
-          } else {
-            alert(`Failed to approve change: ${error.message || 'Unknown error'}`);
-          }
+          alert(`Failed to approve change: ${error.message || 'Unknown error'}`);
           return;
         }
       } else {

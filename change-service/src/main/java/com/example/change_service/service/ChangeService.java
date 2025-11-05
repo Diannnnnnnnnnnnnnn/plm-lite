@@ -12,6 +12,7 @@ import com.example.change_service.repository.mysql.ChangeRepository;
 import com.example.change_service.repository.mysql.ChangeDocumentRepository;
 import com.example.change_service.repository.mysql.ChangePartRepository;
 import com.example.change_service.repository.neo4j.ChangeNodeRepository;
+import com.example.change_service.client.WorkflowOrchestratorClient;
 import com.example.plm.common.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,6 +54,9 @@ public class ChangeService {
 
     @Autowired(required = false)
     private DocumentServiceClient documentServiceClient;
+
+    @Autowired(required = false)
+    private WorkflowOrchestratorClient workflowOrchestratorClient;
 
     @FeignClient(name = "document-service", url = "http://localhost:8081")
     public interface DocumentServiceClient {
@@ -161,8 +166,13 @@ public class ChangeService {
         Changes change = changeRepository.findById(changeId)
             .orElseThrow(() -> new RuntimeException("Change not found"));
 
-        if (change.getStatus() != Status.IN_WORK) {
-            throw new IllegalStateException("Only changes in work can be submitted for review");
+        if (change.getStatus() != Status.IN_WORK && change.getStatus() != Status.DRAFT) {
+            throw new IllegalStateException("Only changes in work or draft can be submitted for review");
+        }
+
+        // Validate that we have at least one reviewer
+        if (reviewerIds == null || reviewerIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one reviewer must be specified");
         }
 
         change.setStatus(Status.IN_REVIEW);
@@ -198,6 +208,35 @@ public class ChangeService {
             } catch (Exception e) {
                 System.err.println("⚠️ Failed to update change in Elasticsearch (non-critical): " + e.getMessage());
             }
+        }
+
+        // Start workflow orchestration for the change approval
+        if (workflowOrchestratorClient != null) {
+            try {
+                // Use the first reviewer for single-reviewer workflow
+                String reviewerId = reviewerIds.get(0);
+                
+                WorkflowOrchestratorClient.StartChangeApprovalRequest workflowRequest = 
+                    new WorkflowOrchestratorClient.StartChangeApprovalRequest(
+                        changeId,
+                        change.getTitle(),
+                        change.getCreator(),
+                        reviewerId,
+                        change.getChangeDocument()  // Pass document ID
+                    );
+
+                System.out.println("🚀 Starting change approval workflow for change: " + changeId);
+                System.out.println("   Related document: " + change.getChangeDocument());
+                Map<String, String> workflowResponse = workflowOrchestratorClient.startChangeApprovalWorkflow(workflowRequest);
+                System.out.println("   ✓ Workflow started with process instance: " + workflowResponse.get("processInstanceKey"));
+                
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to start workflow orchestration (non-critical): " + e.getMessage());
+                e.printStackTrace();
+                // Don't fail the entire operation if workflow fails - the status is already updated
+            }
+        } else {
+            System.out.println("⚠️ Workflow orchestrator client not available - change submitted without workflow");
         }
 
         return mapToResponse(change);
@@ -294,6 +333,51 @@ public class ChangeService {
             return changeSearchRepository.findByTitleContaining(query);
         }
         return List.of();
+    }
+
+    @Transactional
+    public void updateStatus(String changeId, Status newStatus) {
+        Changes change = changeRepository.findById(changeId)
+            .orElseThrow(() -> new RuntimeException("Change not found"));
+
+        System.out.println("Updating change " + changeId + " status from " + change.getStatus() + " to " + newStatus);
+        
+        change.setStatus(newStatus);
+        changeRepository.save(change);
+
+        // Update Neo4j after transaction commits
+        final String finalChangeId = changeId;
+        if (changeNodeRepository != null) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        ChangeNode changeNode = changeNodeRepository.findById(finalChangeId).orElse(null);
+                        if (changeNode != null) {
+                            changeNode.setStatus(newStatus.toString());
+                            changeNodeRepository.save(changeNode);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Failed to update change status in Neo4j: " + e.getMessage());
+                    }
+                }
+            });
+        }
+
+        if (changeSearchRepository != null) {
+            try {
+                Optional<ChangeSearchDocument> searchDoc = changeSearchRepository.findById(changeId);
+                if (searchDoc.isPresent()) {
+                    ChangeSearchDocument doc = searchDoc.get();
+                    doc.setStatus(newStatus.toString());
+                    changeSearchRepository.save(doc);
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to update change in Elasticsearch: " + e.getMessage());
+            }
+        }
+        
+        System.out.println("✅ Change status updated successfully");
     }
 
     @Transactional

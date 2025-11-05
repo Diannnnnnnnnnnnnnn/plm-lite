@@ -95,3 +95,4 @@ public class ChangeSearchDocument {
     public void setAffectedPartIds(List<String> affectedPartIds) { this.affectedPartIds = affectedPartIds; }
 }
 
+

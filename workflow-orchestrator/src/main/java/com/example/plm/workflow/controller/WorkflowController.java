@@ -175,6 +175,43 @@ public class WorkflowController {
     }
 
     /**
+     * Publish a Message to Workflow
+     * Called when an external event needs to trigger workflow continuation (e.g., task completion)
+     */
+    @PostMapping("/messages/publish")
+    public ResponseEntity<Map<String, String>> publishMessage(
+            @RequestBody PublishMessageRequest request) {
+        
+        System.out.println("🔵 API: Publishing message to workflow");
+        System.out.println("   Message: " + request.getMessageName());
+        System.out.println("   Correlation Key: " + request.getCorrelationKey());
+
+        try {
+            workflowService.publishMessage(
+                request.getMessageName(),
+                request.getCorrelationKey(),
+                request.getVariables()
+            );
+
+            Map<String, String> response = new HashMap<>();
+            response.put("status", "PUBLISHED");
+            response.put("message", "Message published successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ API: Failed to publish message: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "ERROR");
+            errorResponse.put("message", "Failed to publish message: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
      * Cancel a Process Instance
      * Called when a workflow needs to be cancelled
      */
@@ -221,7 +258,8 @@ public class WorkflowController {
                 request.getChangeId(),
                 request.getChangeTitle(),
                 request.getCreator(),
-                request.getReviewerId()
+                request.getReviewerId(),
+                request.getDocumentId()
             );
 
             Map<String, String> response = new HashMap<>();
@@ -336,6 +374,7 @@ class StartChangeApprovalRequest {
     private String changeTitle;
     private String creator;
     private String reviewerId;
+    private String documentId;
 
     // Getters and setters
     public String getChangeId() { return changeId; }
@@ -346,6 +385,8 @@ class StartChangeApprovalRequest {
     public void setCreator(String creator) { this.creator = creator; }
     public String getReviewerId() { return reviewerId; }
     public void setReviewerId(String reviewerId) { this.reviewerId = reviewerId; }
+    public String getDocumentId() { return documentId; }
+    public void setDocumentId(String documentId) { this.documentId = documentId; }
 
     @Override
     public String toString() {
@@ -354,6 +395,25 @@ class StartChangeApprovalRequest {
                 ", changeTitle='" + changeTitle + '\'' +
                 ", creator='" + creator + '\'' +
                 ", reviewerId='" + reviewerId + '\'' +
+                ", documentId='" + documentId + '\'' +
                 '}';
     }
+}
+
+/**
+ * DTO for publishing messages to workflow
+ */
+class PublishMessageRequest {
+    private String messageName;
+    private String correlationKey;
+    private Map<String, Object> variables;
+
+    public String getMessageName() { return messageName; }
+    public void setMessageName(String messageName) { this.messageName = messageName; }
+    
+    public String getCorrelationKey() { return correlationKey; }
+    public void setCorrelationKey(String correlationKey) { this.correlationKey = correlationKey; }
+    
+    public Map<String, Object> getVariables() { return variables; }
+    public void setVariables(Map<String, Object> variables) { this.variables = variables; }
 }

@@ -13,3 +13,4 @@ public interface ChangePartRepository extends JpaRepository<ChangePart, String> 
     List<ChangePart> findByPartId(String partId);
 }
 
+

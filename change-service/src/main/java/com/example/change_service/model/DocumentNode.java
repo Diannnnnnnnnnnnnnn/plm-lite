@@ -35,3 +35,4 @@ public class DocumentNode {
     public void setType(String type) { this.type = type; }
 }
 
+

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.example.change_service.client.TaskServiceClient;
+import com.example.change_service.client.WorkflowOrchestratorClient;
 import com.example.change_service.dto.ChangeResponse;
 import com.example.change_service.dto.CreateChangeRequest;
 import com.example.change_service.model.Changes;
@@ -26,6 +27,7 @@ import com.example.change_service.repository.mysql.ChangeDocumentRepository;
 import com.example.change_service.repository.mysql.ChangePartRepository;
 import com.example.change_service.repository.mysql.ChangeRepository;
 import com.example.plm.common.model.Status;
+import java.util.Map;
 
 // Graph Service imports
 import com.example.change_service.client.GraphServiceClient;
@@ -60,6 +62,9 @@ public class ChangeServiceDev {
 
     @Autowired(required = false)
     private GraphServiceClient graphServiceClient;
+
+    @Autowired(required = false)
+    private WorkflowOrchestratorClient workflowOrchestratorClient;
 
     @FeignClient(name = "user-service-dev", url = "http://localhost:8083")
     public interface UserServiceClient {
@@ -193,14 +198,55 @@ public class ChangeServiceDev {
         Changes change = changeRepository.findById(changeId)
             .orElseThrow(() -> new RuntimeException("Change not found"));
 
-        if (change.getStatus() != Status.IN_WORK) {
-            throw new IllegalStateException("Only changes in work can be submitted for review");
+        if (change.getStatus() != Status.IN_WORK && change.getStatus() != Status.DRAFT) {
+            throw new IllegalStateException("Only changes in work or draft can be submitted for review");
+        }
+
+        // Validate that we have at least one reviewer
+        if (reviewerIds == null || reviewerIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one reviewer must be specified");
         }
 
         change.setStatus(Status.IN_REVIEW);
         change = changeRepository.save(change);
 
-        // Create review tasks for each reviewer
+        // Start workflow orchestration for the change approval
+        if (workflowOrchestratorClient != null) {
+            try {
+                // Use the first reviewer for single-reviewer workflow
+                String reviewerId = reviewerIds.get(0);
+                
+                WorkflowOrchestratorClient.StartChangeApprovalRequest workflowRequest = 
+                    new WorkflowOrchestratorClient.StartChangeApprovalRequest(
+                        changeId,
+                        change.getTitle(),
+                        change.getCreator(),
+                        reviewerId,
+                        change.getChangeDocument()  // Pass document ID
+                    );
+
+                System.out.println("🚀 Starting change approval workflow for change: " + changeId);
+                System.out.println("   Related document: " + change.getChangeDocument());
+                Map<String, String> workflowResponse = workflowOrchestratorClient.startChangeApprovalWorkflow(workflowRequest);
+                System.out.println("   ✓ Workflow started with process instance: " + workflowResponse.get("processInstanceKey"));
+                
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to start workflow orchestration: " + e.getMessage());
+                e.printStackTrace();
+                // Fall back to direct task creation if workflow fails
+                createReviewTasksDirectly(change, reviewerIds);
+            }
+        } else {
+            // Fallback: Create review tasks directly if workflow orchestrator is not available
+            System.out.println("⚠️ Workflow orchestrator client not available - creating tasks directly");
+            createReviewTasksDirectly(change, reviewerIds);
+        }
+
+        return mapToResponse(change);
+    }
+
+    private void createReviewTasksDirectly(Changes change, List<String> reviewerIds) {
+        // Create review tasks for each reviewer (legacy mode)
         if (taskServiceClient != null && reviewerIds != null && !reviewerIds.isEmpty()) {
             for (String reviewerId : reviewerIds) {
                 try {
@@ -224,12 +270,12 @@ public class ChangeServiceDev {
                     // Use NEW CreateTaskRequest with correct field names
                     TaskServiceClient.CreateTaskRequest request = new TaskServiceClient.CreateTaskRequest();
                     request.setTaskName("Review Change: " + change.getTitle());
-                    request.setTaskDescription("Please review change " + changeId + " - " + change.getChangeReason());
+                    request.setTaskDescription("Please review change " + change.getId() + " - " + change.getChangeReason());
                     request.setTaskType("REVIEW");
                     request.setAssignedTo(username);
                     request.setAssignedBy("CHANGE_SERVICE");
                     request.setContextType("CHANGE");
-                    request.setContextId(changeId);
+                    request.setContextId(change.getId());
                     request.setPriority(5);
                     
                     taskServiceClient.createTaskWithContext(request);
@@ -240,8 +286,6 @@ public class ChangeServiceDev {
                 }
             }
         }
-
-        return mapToResponse(change);
     }
 
     @Transactional
@@ -331,6 +375,16 @@ public class ChangeServiceDev {
         changeDocumentRepository.findByChangeId(changeId).forEach(cd -> changeDocumentRepository.delete(cd));
         changePartRepository.findByChangeId(changeId).forEach(cp -> changePartRepository.delete(cp));
         
+        // Delete associated tasks to prevent orphaned task references
+        if (taskServiceClient != null) {
+            try {
+                taskServiceClient.deleteTasksByContextId("CHANGE", changeId);
+                log.info("✅ Deleted tasks associated with change {}", changeId);
+            } catch (Exception e) {
+                log.warn("⚠️ Failed to delete tasks for change {}: {}", changeId, e.getMessage());
+            }
+        }
+        
         // Sync deletion to Neo4j graph service
         try {
             if (graphServiceClient != null) {
@@ -355,6 +409,22 @@ public class ChangeServiceDev {
         
         log.info("✅ Found " + count + " changes in H2 database (Elasticsearch not available in dev mode)");
         return count;
+    }
+
+    @Transactional
+    public void updateStatus(String changeId, Status newStatus) {
+        Changes change = changeRepository.findById(changeId)
+            .orElseThrow(() -> new RuntimeException("Change not found"));
+
+        log.info("Updating change {} status from {} to {}", changeId, change.getStatus(), newStatus);
+        
+        change.setStatus(newStatus);
+        changeRepository.save(change);
+
+        // Sync to Neo4j graph
+        syncChangeToGraph(change);
+        
+        log.info("✅ Change status updated successfully");
     }
 
     private ChangeResponse mapToResponse(Changes change) {

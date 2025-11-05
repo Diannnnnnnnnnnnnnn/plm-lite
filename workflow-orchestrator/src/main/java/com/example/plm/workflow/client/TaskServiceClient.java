@@ -46,6 +46,15 @@ public interface TaskServiceClient {
         @RequestBody TaskDTO task
     );
     
+    @org.springframework.web.bind.annotation.GetMapping("/api/tasks/{id}")
+    TaskDTO getTask(@PathVariable("id") Long id);
+    
+    @PutMapping("/api/tasks/{id}/workflow-job-key")
+    void updateTaskWorkflowJobKey(
+        @PathVariable("id") Long id,
+        @RequestParam("jobKey") Long jobKey
+    );
+    
     /**
      * Request DTO for creating tasks with full context
      */
@@ -151,6 +160,9 @@ public interface TaskServiceClient {
         private String initialReviewer;
         private String technicalReviewer;
         private String reviewStage;
+        private String status;  // PENDING, IN_PROGRESS, COMPLETED, etc. (matches JSON field name)
+        private String taskStatus;  // Also accept taskStatus from JSON
+        private String decision;    // APPROVED, REJECTED, etc.
         
         public TaskDTO() {}
         
@@ -171,6 +183,19 @@ public interface TaskServiceClient {
         public void setTechnicalReviewer(String technicalReviewer) { this.technicalReviewer = technicalReviewer; }
         public String getReviewStage() { return reviewStage; }
         public void setReviewStage(String reviewStage) { this.reviewStage = reviewStage; }
+        
+        public String getStatus() { 
+            // Return status if set, otherwise taskStatus
+            return status != null ? status : taskStatus; 
+        }
+        public void setStatus(String status) { 
+            this.status = status; 
+        }
+        public void setTaskStatus(String taskStatus) { 
+            this.taskStatus = taskStatus; 
+        }
+        public String getDecision() { return decision; }
+        public void setDecision(String decision) { this.decision = decision; }
     }
 }
 

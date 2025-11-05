@@ -28,3 +28,4 @@ public interface ChangeSearchRepository extends ElasticsearchRepository<ChangeSe
     List<ChangeSearchDocument> findByAffectedPartIdsContaining(String partId);
 }
 
+

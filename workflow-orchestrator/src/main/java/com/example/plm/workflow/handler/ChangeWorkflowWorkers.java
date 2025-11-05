@@ -59,25 +59,9 @@ public class ChangeWorkflowWorkers {
                 .open();
         System.out.println("   ✓ Registered: wait-for-change-review");
 
-        // Register update-change-status worker
-        zeebeClient.newWorker()
-                .jobType("update-change-status")
-                .handler(this::handleUpdateChangeStatus)
-                .name("update-change-status-worker")
-                .maxJobsActive(10)
-                .timeout(Duration.ofSeconds(30))
-                .open();
-        System.out.println("   ✓ Registered: update-change-status");
-
-        // Register notify-change-completion worker
-        zeebeClient.newWorker()
-                .jobType("notify-change-completion")
-                .handler(this::handleNotifyChangeCompletion)
-                .name("notify-change-completion-worker")
-                .maxJobsActive(10)
-                .timeout(Duration.ofSeconds(30))
-                .open();
-        System.out.println("   ✓ Registered: notify-change-completion");
+        // NOTE: update-change-status and notify-change-completion workers are now
+        // registered via @JobWorker annotations in ChangeWorkerHandler.java
+        // Those workers have better implementation with document version updates
 
         System.out.println("✅ Change workflow workers registered successfully!\n");
     }
@@ -177,133 +161,71 @@ public class ChangeWorkflowWorkers {
 
     /**
      * Worker for "Wait For Change Review" service task
-     * Waits for the change reviewer to complete their review
+     * Polls the task until it's completed
      */
     private void handleWaitForChangeReview(JobClient client, ActivatedJob job) {
         Map<String, Object> variables = job.getVariablesAsMap();
         String changeId = (String) variables.get("changeId");
-        Long jobKey = job.getKey();
         Object taskIdObj = variables.get("taskId");
         
-        System.out.println("⏳ Waiting for change review completion");
+        System.out.println("⏳ Checking change review status");
         System.out.println("   Change ID: " + changeId);
-        System.out.println("   Job Key: " + jobKey);
-        System.out.println("   Process Instance: " + job.getProcessInstanceKey());
         System.out.println("   Task ID: " + taskIdObj);
         
-        // Link job key with task for automatic completion
-        if (taskIdObj != null) {
-            try {
-                // Task ID is now a String UUID, not Long
-                String taskId = taskIdObj.toString();
-                TaskServiceClient.TaskDTO taskUpdate = new TaskServiceClient.TaskDTO();
-                taskUpdate.setWorkflowJobKey(jobKey);
-                // Note: updateTaskWithJobKey still expects Long ID for legacy support
-                // This will need to be updated in task-service to accept String IDs
-                System.out.println("   ℹ️  Task ID: " + taskId);
-                System.out.println("   ℹ️  Job Key: " + jobKey);
-                System.out.println("   ⚠️  Note: Task linking may need manual intervention via API");
-                System.out.println("   ℹ️  Call POST /api/workflows/tasks/{jobKey}/complete when task is done");
-            } catch (Exception e) {
-                System.err.println("   ⚠️ Failed to process task ID: " + e.getMessage());
-                System.out.println("   ℹ️  Fallback: Call POST /api/workflows/tasks/{jobKey}/complete manually");
-            }
-        } else {
-            System.out.println("   ℹ️  No task ID found, call POST /api/workflows/tasks/{jobKey}/complete manually");
-        }
-        
-        // Note: This job will remain active until completed via API call
-        // DO NOT complete it here - wait for external API call
-    }
-
-    /**
-     * Worker for "Update Change Status" service task
-     * Updates change status in the change-service
-     */
-    private void handleUpdateChangeStatus(JobClient client, ActivatedJob job) {
-        Map<String, Object> variables = job.getVariablesAsMap();
-        String changeId = (String) variables.get("changeId");
-        String newStatus = (String) variables.get("newStatus");
-        
-        System.out.println("🔄 Updating change status: " + changeId + " -> " + newStatus);
-
         try {
-            // Call change-service to update status
-            // TODO: When ChangeServiceClient is created, use it here
-            // For now, we'll simulate success
-            System.out.println("   ✓ Change status update request sent");
-            System.out.println("   ℹ️  TODO: Implement ChangeServiceClient.updateStatus()");
-
-            // Complete the job
-            Map<String, Object> result = new HashMap<>();
-            result.put("statusUpdated", true);
-            result.put("newStatus", newStatus);
+            if (taskIdObj == null) {
+                throw new RuntimeException("No taskId found in workflow variables");
+            }
             
-            client.newCompleteCommand(job.getKey())
-                    .variables(result)
-                    .send()
-                    .join();
-
+            // Get task status
+            Long taskId = Long.parseLong(taskIdObj.toString());
+            TaskServiceClient.TaskDTO task = taskServiceClient.getTask(taskId);
+            
+            System.out.println("   Task Status: " + task.getStatus());
+            System.out.println("   Task Decision: " + task.getDecision());
+            
+            // Check if task is completed
+            if ("COMPLETED".equals(task.getStatus())) {
+                // Task is completed - check the decision
+                boolean isApproved = "APPROVED".equals(task.getDecision());
+                
+                System.out.println("   ✓ Review completed: " + (isApproved ? "APPROVED" : "REJECTED"));
+                
+                // Complete the workflow job with the approval result
+                Map<String, Object> result = new HashMap<>();
+                result.put("approved", isApproved);
+                result.put("reviewCompleted", true);
+                result.put("decision", task.getDecision());
+                
+                client.newCompleteCommand(job.getKey())
+                        .variables(result)
+                        .send()
+                        .join();
+                        
+            } else {
+                // Task not completed yet - fail the job to trigger retry
+                System.out.println("   ⏳ Task not yet completed, will retry...");
+                client.newFailCommand(job.getKey())
+                        .retries(job.getRetries())
+                        .errorMessage("Task not yet completed")
+                        .send();
+            }
+            
         } catch (Exception e) {
-            System.err.println("❌ Error updating change status: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Fail the job
+            System.err.println("   ❌ Error checking task status: " + e.getMessage());
+            // Fail the job to trigger retry
             client.newFailCommand(job.getKey())
-                    .retries(job.getRetries() - 1)
-                    .errorMessage("Failed to update change status: " + e.getMessage())
+                    .retries(job.getRetries())
+                    .errorMessage("Error checking task: " + e.getMessage())
                     .send();
         }
     }
 
-    /**
-     * Worker for "Notify Change Completion" service task
-     * Sends notifications about change workflow completion
-     */
-    private void handleNotifyChangeCompletion(JobClient client, ActivatedJob job) {
-        Map<String, Object> variables = job.getVariablesAsMap();
-        String changeId = (String) variables.get("changeId");
-        String changeTitle = (String) variables.get("changeTitle");
-        String creator = (String) variables.get("creator");
-        String finalStatus = (String) variables.get("newStatus");
-        
-        System.out.println("📧 Sending completion notification for change: " + changeId);
-        System.out.println("   Final status: " + finalStatus);
-
-        try {
-            // TODO: Implement actual notification mechanism (email, websocket, etc.)
-            String message = String.format(
-                "Change '%s' (ID: %s) workflow completed.\nFinal status: %s\nCreator: %s",
-                changeTitle, changeId, finalStatus, creator
-            );
-            
-            System.out.println("   📬 Notification: " + message);
-            System.out.println("   ✓ Notification sent successfully");
-
-            // Complete the job
-            Map<String, Object> result = new HashMap<>();
-            result.put("notificationSent", true);
-            result.put("finalStatus", finalStatus);
-            
-            client.newCompleteCommand(job.getKey())
-                    .variables(result)
-                    .send()
-                    .join();
-
-        } catch (Exception e) {
-            System.err.println("❌ Error sending notification: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Don't fail the workflow if notification fails
-            Map<String, Object> result = new HashMap<>();
-            result.put("notificationSent", false);
-            result.put("error", e.getMessage());
-            
-            client.newCompleteCommand(job.getKey())
-                    .variables(result)
-                    .send()
-                    .join();
-        }
-    }
+    // NOTE: handleUpdateChangeStatus and handleNotifyChangeCompletion methods have been
+    // removed because they are now implemented in ChangeWorkerHandler.java with @JobWorker
+    // annotations. The new implementation in ChangeWorkerHandler includes:
+    // 1. Document version updates when changes are approved
+    // 2. Better error handling and logging
+    // 3. Integration with DocumentServiceClient for change-based edits
 }
 
