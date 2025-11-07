@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * Feign Client for Task Service
  */
-@FeignClient(name = "task-service", url = "http://localhost:8082")
+@FeignClient(name = "task-service")
 public interface TaskServiceClient {
     
     // Legacy method - deprecated (uses form params, doesn't match task-service API)

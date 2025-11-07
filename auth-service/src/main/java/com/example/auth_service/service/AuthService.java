@@ -24,9 +24,19 @@ public class AuthService {
 
   public JwtResponse login(LoginRequest login) {
     UserDto user = userClient.verify(login); // 401 thrown by Feign if invalid
+    
+    // Build JWT claims
     Map<String, Object> claims = new HashMap<>();
     claims.put("uid", user.getId());
-    claims.put("role", user.getRole());
+    claims.put("username", user.getUsername());
+    
+    // Add roles
+    if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+      claims.put("roles", user.getRoles());
+      claims.put("role", user.getRoles().get(0)); // First role for backward compatibility
+    }
+    
+    // Generate token with username as subject
     String token = jwtUtil.generate(user.getUsername(), claims);
     return new JwtResponse(token);
   }

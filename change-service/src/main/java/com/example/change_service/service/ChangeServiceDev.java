@@ -66,7 +66,7 @@ public class ChangeServiceDev {
     @Autowired(required = false)
     private WorkflowOrchestratorClient workflowOrchestratorClient;
 
-    @FeignClient(name = "user-service-dev", url = "http://localhost:8083")
+    @FeignClient(name = "user-service")
     public interface UserServiceClient {
         @GetMapping("/users/{id}")
         UserResponse getUserById(@PathVariable("id") Long id);
@@ -84,7 +84,7 @@ public class ChangeServiceDev {
         public void setUsername(String username) { this.username = username; }
     }
 
-    @FeignClient(name = "document-service-dev", url = "http://localhost:8081")
+    @FeignClient(name = "document-service")
     public interface DocumentServiceClient {
         @PostMapping("/api/v1/documents/{id}/initiate-change-edit")
         DocumentResponse initiateChangeBasedEdit(

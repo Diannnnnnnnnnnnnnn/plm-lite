@@ -12,7 +12,25 @@ echo.
 REM Get the current directory
 set PROJECT_ROOT=%CD%
 
-REM Start Graph Service First (other services depend on it)
+REM Start Eureka Server First (all services register with it)
+echo [Eureka Server - Service Discovery]
+echo   Port: 8761
+echo   Starting in new window...
+start "PLM - Eureka Server (8761)" cmd /k "cd /d %PROJECT_ROOT%\infra\eureka-server && echo ========================================== && echo   Eureka Server - Port 8761 && echo   Service Discovery ^& Registry && echo ========================================== && echo. && mvn spring-boot:run"
+echo   Waiting 30 seconds for startup...
+echo.
+timeout /t 30 /nobreak >nul
+
+REM Start API Gateway (Port 8080 - NEW)
+echo [API Gateway]
+echo   Port: 8080
+echo   Starting in new window...
+start "PLM - API Gateway (8080)" cmd /k "cd /d %PROJECT_ROOT%\api-gateway && echo ========================================== && echo   API Gateway - Port 8080 && echo   JWT Authentication ^& Routing && echo ========================================== && echo. && mvn spring-boot:run"
+echo   Waiting 15 seconds for startup...
+echo.
+timeout /t 15 /nobreak >nul
+
+REM Start Graph Service (other services depend on it)
 echo [Graph Service]
 echo   Port: 8090
 echo   Starting in new window...
@@ -38,6 +56,15 @@ start "PLM - User Service (8083)" cmd /k "cd /d %PROJECT_ROOT%\user-service && e
 echo   Waiting 45 seconds for startup...
 echo.
 timeout /t 45 /nobreak >nul
+
+REM Start Auth Service (Port 8110 - NEW)
+echo [Auth Service]
+echo   Port: 8110
+echo   Starting in new window...
+start "PLM - Auth Service (8110)" cmd /k "cd /d %PROJECT_ROOT%\auth-service && echo ========================================== && echo   Auth Service - Port 8110 && echo   JWT Token Generation && echo ========================================== && echo. && mvn spring-boot:run"
+echo   Waiting 30 seconds for startup...
+echo.
+timeout /t 30 /nobreak >nul
 
 REM Start Task Service
 echo [Task Service]
@@ -84,11 +111,22 @@ echo   Waiting 30 seconds for startup...
 echo.
 timeout /t 30 /nobreak >nul
 
+REM Start NGINX in Docker (Port 8111 - NEW)
+echo [NGINX - Entry Point]
+echo   Port: 8111
+echo   Starting Docker container...
+cd /d %PROJECT_ROOT%\infra\nginx
+docker-compose up -d
+cd /d %PROJECT_ROOT%
+echo   NGINX container started
+echo.
+timeout /t 5 /nobreak >nul
+
 REM Start Frontend (React)
 echo [Frontend - React]
-echo   Port: 3000
+echo   Port: 3001
 echo   Starting in new window...
-start "PLM - Frontend (3000)" cmd /k "cd /d %PROJECT_ROOT%\frontend && echo ========================================== && echo   Frontend - Port 3000 && echo   React Development Server && echo ========================================== && echo. && npm start"
+start "PLM - Frontend (3001)" cmd /k "cd /d %PROJECT_ROOT%\frontend && echo ========================================== && echo   Frontend - Port 3001 && echo   React Development Server && echo ========================================== && echo. && npm start"
 echo   Frontend starting...
 echo.
 timeout /t 10 /nobreak >nul
@@ -98,37 +136,53 @@ echo ========================================
 echo   All Services Started Successfully!
 echo ========================================
 echo.
+echo Infrastructure:
+echo   Eureka Server:        http://localhost:8761/
+echo   Redis Cache:          localhost:6379
+echo.
+echo Gateway Layer:
+echo   NGINX (Entry Point):  http://localhost:8111 ^<-- START HERE!
+echo   API Gateway:          http://localhost:8080
+echo.
 echo Backend Services:
-echo   Graph Service:        http://localhost:8090
-echo   Workflow Orchestrator: http://localhost:8086
+echo   Auth Service:         http://localhost:8110
 echo   User Service:         http://localhost:8083
-echo   Task Service:         http://localhost:8082
+echo   Graph Service:        http://localhost:8090
 echo   Document Service:     http://localhost:8081
+echo   Task Service:         http://localhost:8082
 echo   BOM Service:          http://localhost:8089
 echo   Change Service:       http://localhost:8084
+echo   Workflow Orchestrator: http://localhost:8086
 echo   Search Service:       http://localhost:8091
 echo.
 echo Frontend:
-echo   React UI:             http://localhost:3000
+echo   React UI:             http://localhost:3001
+echo   Via NGINX:            http://localhost:8111
 echo.
-echo Database Status:
-echo   Most services use MySQL
-echo   Graph service uses Neo4j
-echo   Workflow uses H2 (dev mode) or MySQL (prod mode)
-echo   Data will persist across restarts
+echo Service Discovery:
+echo   All services registered with Eureka
+echo   View registry:        http://localhost:8761/
 echo.
-echo Total Windows Opened: 9
-echo   - 8 Backend services (including Search)
+echo Total Windows Opened: 12
+echo   - 1 Eureka Server
+echo   - 1 API Gateway (JWT ^& Routing)
+echo   - 1 Auth Service (JWT Generation)
+echo   - 8 Backend services
+echo   - 1 NGINX (Docker)
 echo   - 1 Frontend
 echo.
+echo ACCESS YOUR APPLICATION:
+echo   URL: http://localhost:8111
+echo   Login: demo/demo (or guodian/password, vivi/password)
+echo.
 echo Next Steps:
-echo   1. Wait for all services to finish starting (~6 minutes)
-echo   2. Open browser: http://localhost:3000
-echo   3. Re-create your data (users, documents, parts)
-echo   4. Test creating changes and workflows!
+echo   1. Wait 2-3 minutes for all services to start
+echo   2. Open browser: http://localhost:8111
+echo   3. Login and test the application
 echo.
 echo To stop all services:
 echo   Run: stop-all-services.bat
 echo   Or: taskkill /F /IM java.exe ^&^& taskkill /F /IM node.exe
+echo   And: cd infra\nginx ^&^& docker-compose down
 echo.
 pause

@@ -1,20 +1,13 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8081/api/v1';
+import apiClient from '../utils/apiClient';
 
 class DocumentService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.api = apiClient;
   }
 
   async getAllDocuments() {
     try {
-      const response = await this.api.get('/documents');
+      const response = await this.api.get('/api/documents');
       return response.data;
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -24,7 +17,7 @@ class DocumentService {
 
   async getDocumentById(id) {
     try {
-      const response = await this.api.get(`/documents/${id}`);
+      const response = await this.api.get(`/api/documents/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching document ${id}:`, error);
@@ -34,7 +27,7 @@ class DocumentService {
 
   async createDocument(documentData) {
     try {
-      const response = await this.api.post('/documents', documentData);
+      const response = await this.api.post('/api/documents', documentData);
       return response.data;
     } catch (error) {
       console.error('Error creating document:', error);
@@ -44,7 +37,7 @@ class DocumentService {
 
   async updateDocument(id, documentData) {
     try {
-      const response = await this.api.put(`/documents/${id}`, documentData);
+      const response = await this.api.put(`/api/documents/${id}`, documentData);
       return response.data;
     } catch (error) {
       console.error(`Error updating document ${id}:`, error);
@@ -54,7 +47,7 @@ class DocumentService {
 
   async deleteDocument(id) {
     try {
-      await this.api.delete(`/documents/${id}`);
+      await this.api.delete(`/api/documents/${id}`);
       return true;
     } catch (error) {
       console.error(`Error deleting document ${id}:`, error);
@@ -86,7 +79,7 @@ class DocumentService {
         stage: stageMapping[documentData.stage] || 'CONCEPTUAL_DESIGN',
         category: documentData.description || 'General',
         masterId: documentData.documentNumber || null,
-        bomId: documentData.relatedProduct || null  // Add BOM ID
+        partId: documentData.relatedProduct || null  // Add Part ID (replaces bomId)
       };
 
       const createResponse = await this.api.post('/documents', backendDocumentData);
@@ -97,7 +90,7 @@ class DocumentService {
       formData.append('file', file);
       formData.append('user', user);
 
-      const uploadResponse = await this.api.post(`/documents/${document.id}/upload`, formData, {
+      const uploadResponse = await this.api.post(`/api/documents/${document.id}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -116,7 +109,7 @@ class DocumentService {
 
   async downloadDocument(id) {
     try {
-      const response = await this.api.get(`/documents/${id}/download`, {
+      const response = await this.api.get(`/api/documents/${id}/download`, {
         responseType: 'blob',
       });
       return response.data;
@@ -128,7 +121,7 @@ class DocumentService {
 
   async getDocumentHistory(id) {
     try {
-      const response = await this.api.get(`/documents/${id}/history`);
+      const response = await this.api.get(`/api/documents/${id}/history`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching document history ${id}:`, error);
@@ -138,7 +131,7 @@ class DocumentService {
 
   async getDocumentVersions(id) {
     try {
-      const response = await this.api.get(`/documents/${id}/versions`);
+      const response = await this.api.get(`/api/documents/${id}/versions`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching document versions ${id}:`, error);
@@ -148,7 +141,7 @@ class DocumentService {
 
   async submitForReview(id, reviewData) {
     try {
-      const response = await this.api.post(`/documents/${id}/submit-review`, reviewData);
+      const response = await this.api.post(`/api/documents/${id}/submit-review`, reviewData);
       return response.data;
     } catch (error) {
       console.error(`Error submitting document ${id} for review:`, error);
@@ -158,7 +151,7 @@ class DocumentService {
 
   async approveDocument(id, approvalData) {
     try {
-      const response = await this.api.post(`/documents/${id}/approve`, approvalData);
+      const response = await this.api.post(`/api/documents/${id}/approve`, approvalData);
       return response.data;
     } catch (error) {
       console.error(`Error approving document ${id}:`, error);
@@ -168,7 +161,7 @@ class DocumentService {
 
   async rejectDocument(id, rejectionData) {
     try {
-      const response = await this.api.post(`/documents/${id}/reject`, rejectionData);
+      const response = await this.api.post(`/api/documents/${id}/reject`, rejectionData);
       return response.data;
     } catch (error) {
       console.error(`Error rejecting document ${id}:`, error);
@@ -178,7 +171,7 @@ class DocumentService {
 
   async completeReview(id, approved, user, comment) {
     try {
-      const response = await this.api.post(`/documents/${id}/review-complete`, {
+      const response = await this.api.post(`/api/documents/${id}/review-complete`, {
         approved: approved,
         user: user,
         comment: comment
@@ -192,7 +185,7 @@ class DocumentService {
 
   async searchDocuments(searchParams) {
     try {
-      const response = await this.api.post('/documents/search', searchParams);
+      const response = await this.api.post('/api/documents/search', searchParams);
       return response.data;
     } catch (error) {
       console.error('Error searching documents:', error);
@@ -200,12 +193,17 @@ class DocumentService {
     }
   }
 
+  // Legacy method - now uses partId
   async getDocumentsByBomId(bomId) {
+    return this.getDocumentsByPartId(bomId);
+  }
+
+  async getDocumentsByPartId(partId) {
     try {
-      const response = await this.api.get(`/documents/bom/${bomId}`);
+      const response = await this.api.get(`/api/documents/part/${partId}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching documents for BOM ${bomId}:`, error);
+      console.error(`Error fetching documents for Part ${partId}:`, error);
       throw error;
     }
   }

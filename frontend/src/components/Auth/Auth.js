@@ -10,7 +10,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import userService from '../../services/userService';
+import authService from '../../services/authService';
 
 export default function Auth({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -29,12 +29,11 @@ export default function Auth({ onLogin }) {
     setError('');
 
     try {
-      // Try to authenticate with the backend service
-      const userData = await userService.validateUser(username, password);
-      localStorage.setItem('user', JSON.stringify(userData));
+      // Authenticate with the backend service via API Gateway
+      await authService.login(username, password);
       onLogin();
     } catch (err) {
-      // If backend is not available or auth fails, provide demo access
+      // If backend is not available or auth fails, provide demo access as fallback
       let demoUser = null;
       if (username === 'demo' && password === 'demo') {
         demoUser = { id: 1, username: 'demo', roles: ['USER'] };
@@ -48,9 +47,10 @@ export default function Auth({ onLogin }) {
 
       if (demoUser) {
         localStorage.setItem('user', JSON.stringify(demoUser));
+        localStorage.setItem('jwt_token', 'demo_token');
         onLogin();
       } else {
-        setError('Invalid username or password. Try demo/demo, guodian/password, labubu/password, or vivi/password for testing, or ensure the user service is running on port 8083.');
+        setError('Invalid username or password. Try demo/demo, guodian/password, labubu/password, or vivi/password for testing.');
         console.error('Login error:', err);
       }
     } finally {

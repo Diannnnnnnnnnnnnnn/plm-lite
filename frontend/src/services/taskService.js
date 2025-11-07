@@ -1,20 +1,13 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8082/api';
+import apiClient from '../utils/apiClient';
 
 class TaskService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.api = apiClient;
   }
 
   async getAllTasks() {
     try {
-      const response = await this.api.get('/tasks');
+      const response = await this.api.get('/api/tasks');
       console.log('getAllTasks response:', response.data);
       return response.data;
     } catch (error) {
@@ -25,7 +18,7 @@ class TaskService {
 
   async getTaskById(id) {
     try {
-      const response = await this.api.get(`/tasks/${id}`);
+      const response = await this.api.get(`/api/tasks/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching task ${id}:`, error);
@@ -35,7 +28,7 @@ class TaskService {
 
   async createTask(taskData) {
     try {
-      const response = await this.api.post('/tasks', taskData);
+      const response = await this.api.post('/api/tasks', taskData);
       return response.data;
     } catch (error) {
       console.error('Error creating task:', error);
@@ -45,7 +38,7 @@ class TaskService {
 
   async updateTask(id, taskData) {
     try {
-      const response = await this.api.put(`/tasks/${id}`, taskData);
+      const response = await this.api.put(`/api/tasks/${id}`, taskData);
       return response.data;
     } catch (error) {
       console.error(`Error updating task ${id}:`, error);
@@ -55,7 +48,7 @@ class TaskService {
 
   async deleteTask(id) {
     try {
-      await this.api.delete(`/tasks/${id}`);
+      await this.api.delete(`/api/tasks/${id}`);
       return true;
     } catch (error) {
       console.error(`Error deleting task ${id}:`, error);
@@ -65,7 +58,7 @@ class TaskService {
 
   async getTasksByStatus(status) {
     try {
-      const response = await this.api.get(`/tasks?status=${status}`);
+      const response = await this.api.get(`/api/tasks?status=${status}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching tasks by status ${status}:`, error);
@@ -75,7 +68,7 @@ class TaskService {
 
   async getTasksByAssignee(assignee) {
     try {
-      const response = await this.api.get(`/tasks?assignedTo=${assignee}`);
+      const response = await this.api.get(`/api/tasks?assignedTo=${assignee}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching tasks for assignee ${assignee}:`, error);
@@ -85,7 +78,7 @@ class TaskService {
 
   async getReviewTasks(userId) {
     try {
-      const response = await this.api.get(`/tasks/review-tasks/${userId}`);
+      const response = await this.api.get(`/api/tasks/review-tasks/${userId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching review tasks for user ${userId}:`, error);
@@ -95,7 +88,7 @@ class TaskService {
 
   async getTasksByDocument(documentId) {
     try {
-      const response = await this.api.get(`/tasks/by-document/${documentId}`);
+      const response = await this.api.get(`/api/tasks/by-document/${documentId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching tasks for document ${documentId}:`, error);
@@ -105,7 +98,7 @@ class TaskService {
 
   async addTaskSignoff(taskId, userId, action, comments) {
     try {
-      const response = await this.api.post(`/tasks/${taskId}/signoff`, {
+      const response = await this.api.post(`/api/tasks/${taskId}/signoff`, {
         userId,
         action,
         comments
@@ -133,7 +126,7 @@ class TaskService {
       
       console.log(`📤 Updating task ${taskId} status:`, payload);
       
-      const response = await this.api.put(`/tasks/${taskId}/status`, payload);
+      const response = await this.api.put(`/api/tasks/${taskId}/status`, payload);
       return response.data;
     } catch (error) {
       console.error(`Error updating task ${taskId} status:`, error);

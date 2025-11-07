@@ -1,17 +1,17 @@
 package com.example.task_service.client;
 
+import java.util.Map;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import java.util.Map;
-
 /**
  * Feign Client for Workflow Orchestrator Service
  * Used to automatically complete workflow jobs and publish messages when tasks are done
  */
-@FeignClient(name = "workflow-orchestrator", url = "http://localhost:8086")
+@FeignClient(name = "workflow-orchestrator")
 public interface WorkflowOrchestratorClient {
     
     @PostMapping("/api/workflows/tasks/{jobKey}/complete")

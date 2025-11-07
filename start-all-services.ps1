@@ -42,6 +42,16 @@ Write-Host "`nStarting backend services...`n" -ForegroundColor Cyan
 # Get the current directory
 $rootDir = Get-Location
 
+# Start Eureka Server First (all services register with it for service discovery)
+Write-Host "`nStarting Eureka Server (Service Discovery)..." -ForegroundColor Magenta
+Start-Service -Name "Eureka Server" -Path "$rootDir\infra\eureka-server" -Command "mvn spring-boot:run" -Port 8761
+Start-Sleep -Seconds 20  # Give Eureka time to start before other services register
+
+# Start API Gateway (Port 8080 - NEW)
+Write-Host "`nStarting API Gateway..." -ForegroundColor Magenta
+Start-Service -Name "API Gateway" -Path "$rootDir\api-gateway" -Command "mvn spring-boot:run" -Port 8080
+Start-Sleep -Seconds 10
+
 # Start Backend Services (in order of dependencies)
 Start-Service -Name "Graph Service" -Path "$rootDir\infra\graph-service" -Command "mvn spring-boot:run" -Port 8090
 Start-Sleep -Seconds 5  # Give graph service time to start since other services depend on it
@@ -57,6 +67,13 @@ Start-Service -Name "Search Service" -Path "$rootDir\infra\search-service" -Comm
 Write-Host "`nWaiting for backend services to initialize (60 seconds)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 60
 
+# Start NGINX in Docker (Port 8111 - NEW)
+Write-Host "`nStarting NGINX (Port 8111)..." -ForegroundColor Magenta
+cd "$rootDir\infra\nginx"
+docker-compose up -d
+cd $rootDir
+Start-Sleep -Seconds 5
+
 # Start Frontend
 Write-Host "`nStarting frontend..." -ForegroundColor Green
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\frontend'; npm start" -WindowStyle Normal
@@ -65,23 +82,32 @@ Write-Host "`n========================================"
 Write-Host "All services are starting!" -ForegroundColor Green
 Write-Host "========================================`n"
 
-Write-Host "Backend Services:" -ForegroundColor Cyan
-Write-Host "  - Graph Service:         http://localhost:8090"
-Write-Host "  - User Service:          http://localhost:8083"
+Write-Host "Infrastructure:" -ForegroundColor Cyan
+Write-Host "  - Eureka Server:         http://localhost:8761"
+Write-Host "  - Redis Cache:           localhost:6379"
+
+Write-Host "`nGateway Layer:" -ForegroundColor Cyan
+Write-Host "  - NGINX (Entry Point):   http://localhost:8111 ⭐" -ForegroundColor Yellow
+Write-Host "  - API Gateway:           http://localhost:8080"
+
+Write-Host "`nBackend Services:" -ForegroundColor Cyan
 Write-Host "  - Auth Service:          http://localhost:8110"
+Write-Host "  - User Service:          http://localhost:8083"
 Write-Host "  - Document Service:      http://localhost:8081"
 Write-Host "  - Task Service:          http://localhost:8082"
 Write-Host "  - Change Service:        http://localhost:8084"
-Write-Host "  - Workflow Orchestrator: http://localhost:8086"
 Write-Host "  - BOM Service:           http://localhost:8089"
+Write-Host "  - Workflow Orchestrator: http://localhost:8086"
+Write-Host "  - Graph Service:         http://localhost:8090"
 Write-Host "  - Search Service:        http://localhost:8091"
 
-Write-Host "`nInfrastructure:" -ForegroundColor Cyan
-Write-Host "  - Redis Cache:           localhost:6379"
-Write-Host "  - Redis Commander:       http://localhost:8085"
+Write-Host "`nService Discovery:" -ForegroundColor Cyan
+Write-Host "  - All services registered with Eureka"
+Write-Host "  - View registry:         http://localhost:8761"
 
-Write-Host "`nFrontend:" -ForegroundColor Cyan
-Write-Host "  - React App:             http://localhost:3001"
+Write-Host "`n⭐ Access Application:" -ForegroundColor Green -BackgroundColor DarkGreen
+Write-Host "  👉 Frontend:             http://localhost:8111" -ForegroundColor Yellow
+Write-Host "  👉 API:                  http://localhost:8111/api/*" -ForegroundColor Yellow
 
 Write-Host "`nPlease wait 1-2 minutes for all services to fully start." -ForegroundColor Yellow
 Write-Host "`nPress any key to exit this window..."

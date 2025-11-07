@@ -1,20 +1,13 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8089/api/v1';
+import apiClient from '../utils/apiClient';
 
 class PartService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.api = apiClient;
   }
 
   async getAllParts() {
     try {
-      const response = await this.api.get('/parts');
+      const response = await this.api.get('/api/boms/parts');
       return response.data;
     } catch (error) {
       console.error('Error fetching parts:', error);
@@ -24,7 +17,7 @@ class PartService {
 
   async getPartById(id) {
     try {
-      const response = await this.api.get(`/parts/${id}`);
+      const response = await this.api.get(`/api/boms/parts/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching part ${id}:`, error);
@@ -34,7 +27,7 @@ class PartService {
 
   async createPart(partData) {
     try {
-      const response = await this.api.post('/parts', partData);
+      const response = await this.api.post('/api/boms/parts', partData);
       return response.data;
     } catch (error) {
       console.error('Error creating part:', error);
@@ -44,7 +37,7 @@ class PartService {
 
   async updatePart(id, partData) {
     try {
-      const response = await this.api.put(`/parts/${id}`, partData);
+      const response = await this.api.put(`/api/boms/parts/${id}`, partData);
       return response.data;
     } catch (error) {
       console.error(`Error updating part ${id}:`, error);
@@ -54,7 +47,7 @@ class PartService {
 
   async deletePart(id) {
     try {
-      await this.api.delete(`/parts/${id}`);
+      await this.api.delete(`/api/boms/parts/${id}`);
       return true;
     } catch (error) {
       console.error(`Error deleting part ${id}:`, error);
@@ -64,7 +57,7 @@ class PartService {
 
   async getPartHierarchy(id) {
     try {
-      const response = await this.api.get(`/parts/${id}/bom-hierarchy`);
+      const response = await this.api.get(`/api/boms/parts/${id}/bom-hierarchy`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching part hierarchy ${id}:`, error);
@@ -74,10 +67,10 @@ class PartService {
 
   async addPartUsage(parentPartId, childPartId, quantity) {
     try {
-      const response = await this.api.post('/parts/usage', {
+      const response = await this.api.post('/api/boms/parts/usage', {
         parentPartId,
         childPartId,
-        quantity
+        quantity,
       });
       return response.data;
     } catch (error) {
@@ -88,7 +81,7 @@ class PartService {
 
   async removePartUsage(parentPartId, childPartId) {
     try {
-      await this.api.delete(`/parts/${parentPartId}/usage/${childPartId}`);
+      await this.api.delete(`/api/boms/parts/${parentPartId}/usage/${childPartId}`);
       return true;
     } catch (error) {
       console.error('Error removing part usage:', error);
@@ -98,7 +91,7 @@ class PartService {
 
   async getChildParts(parentPartId) {
     try {
-      const response = await this.api.get(`/parts/${parentPartId}/children`);
+      const response = await this.api.get(`/api/boms/parts/${parentPartId}/children`);
       return response.data;
     } catch (error) {
       console.error('Error getting child parts:', error);
@@ -106,52 +99,52 @@ class PartService {
     }
   }
 
-  async getParentParts(childPartId) {
+  async searchParts(searchParams) {
     try {
-      const response = await this.api.get(`/parts/${childPartId}/parents`);
+      const response = await this.api.post('/api/boms/parts/search', searchParams);
       return response.data;
     } catch (error) {
-      console.error('Error getting parent parts:', error);
+      console.error('Error searching parts:', error);
       throw error;
     }
   }
 
-  async linkPartToDocument(linkData) {
+  async getPartsByDocument(documentId) {
     try {
-      const response = await this.api.post('/parts/document-link', linkData);
+      const response = await this.api.get(`/api/boms/parts/by-document/${documentId}`);
       return response.data;
     } catch (error) {
-      console.error('Error linking part to document:', error);
+      console.error(`Error fetching parts for document ${documentId}:`, error);
+      throw error;
+    }
+  }
+
+  async linkPartToDocument(partId, documentId) {
+    try {
+      const response = await this.api.post(`/api/boms/parts/${partId}/documents/${documentId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error linking part ${partId} to document ${documentId}:`, error);
       throw error;
     }
   }
 
   async unlinkPartFromDocument(partId, documentId) {
     try {
-      await this.api.delete(`/parts/${partId}/document/${documentId}`);
+      await this.api.delete(`/api/boms/parts/${partId}/documents/${documentId}`);
       return true;
     } catch (error) {
-      console.error('Error unlinking part from document:', error);
+      console.error(`Error unlinking part ${partId} from document ${documentId}:`, error);
       throw error;
     }
   }
 
-  async getDocumentsForPart(partId) {
+  async getPartWhereUsed(partId) {
     try {
-      const response = await this.api.get(`/parts/${partId}/documents`);
+      const response = await this.api.get(`/api/boms/parts/${partId}/where-used`);
       return response.data;
     } catch (error) {
-      console.error('Error getting documents for part:', error);
-      throw error;
-    }
-  }
-
-  async getPartsForDocument(documentId) {
-    try {
-      const response = await this.api.get(`/parts/document/${documentId}/parts`);
-      return response.data;
-    } catch (error) {
-      console.error('Error getting parts for document:', error);
+      console.error(`Error fetching where-used for part ${partId}:`, error);
       throw error;
     }
   }
@@ -159,6 +152,3 @@ class PartService {
 
 const partServiceInstance = new PartService();
 export default partServiceInstance;
-
-
-

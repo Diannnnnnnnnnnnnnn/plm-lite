@@ -1,13 +1,15 @@
 package com.example.plm.workflow.client;
 
-import com.example.plm.workflow.dto.UserResponse;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import com.example.plm.workflow.dto.UserResponse;
 
 /**
  * Feign Client for User Service
  */
-@FeignClient(name = "user-service", url = "http://localhost:8083")
+@FeignClient(name = "user-service")
 public interface UserServiceClient {
     
     @GetMapping("/users/{id}")

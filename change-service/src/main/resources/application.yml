@@ -53,12 +53,17 @@ spring:
     compatibility-verifier:
       enabled: false
 
-# Eureka Configuration (disabled for now)
+# Eureka Configuration
 eureka:
   client:
-    enabled: false
-    register-with-eureka: false
-    fetch-registry: false
+    enabled: true
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
 ---
 # Development Profile

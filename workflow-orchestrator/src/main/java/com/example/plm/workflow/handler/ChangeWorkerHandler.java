@@ -1,23 +1,25 @@
 package com.example.plm.workflow.handler;
 
-import io.camunda.zeebe.client.api.response.ActivatedJob;
-import io.camunda.zeebe.spring.client.annotation.JobWorker;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
-import com.example.plm.workflow.client.TaskServiceClient;
-import com.example.plm.workflow.client.TaskServiceClient.TaskDTO;
-import com.example.plm.workflow.client.UserServiceClient;
 import com.example.plm.workflow.client.DocumentServiceClient;
+import com.example.plm.workflow.client.TaskServiceClient;
+import com.example.plm.workflow.client.UserServiceClient;
 import com.example.plm.workflow.dto.UserResponse;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.camunda.zeebe.client.api.response.ActivatedJob;
+import io.camunda.zeebe.spring.client.annotation.JobWorker;
 
 /**
  * Workflow Worker Handler for Change Approval Process
@@ -219,7 +221,7 @@ public class ChangeWorkerHandler {
     /**
      * Feign Client for Change Service
      */
-    @FeignClient(name = "change-service", url = "http://localhost:8084")
+    @FeignClient(name = "change-service")
     public interface ChangeServiceClient {
         @PutMapping("/api/changes/{id}/status")
         ResponseEntity<Void> updateStatus(@PathVariable("id") String id, @RequestBody Map<String, String> statusUpdate);

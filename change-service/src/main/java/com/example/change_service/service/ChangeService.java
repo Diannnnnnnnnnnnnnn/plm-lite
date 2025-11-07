@@ -58,7 +58,7 @@ public class ChangeService {
     @Autowired(required = false)
     private WorkflowOrchestratorClient workflowOrchestratorClient;
 
-    @FeignClient(name = "document-service", url = "http://localhost:8081")
+    @FeignClient(name = "document-service")
     public interface DocumentServiceClient {
         @GetMapping("/api/v1/documents/{id}")
         DocumentInfo getDocument(@PathVariable("id") String id);

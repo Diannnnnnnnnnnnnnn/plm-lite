@@ -1,80 +1,51 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8089/api/v1';
+import apiClient from '../utils/apiClient';
 
 class BomService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.api = apiClient;
   }
 
+  // Legacy BOM methods now redirect to Part methods
   async getAllBoms() {
-    try {
-      const response = await this.api.get('/boms');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching BOMs:', error);
-      throw error;
-    }
+    return this.getAllParts();
   }
 
   async getBomById(id) {
-    try {
-      const response = await this.api.get(`/boms/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching BOM ${id}:`, error);
-      throw error;
-    }
+    return this.getPartById(id);
   }
 
   async createBom(bomData) {
-    try {
-      const response = await this.api.post('/boms', bomData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating BOM:', error);
-      throw error;
-    }
+    // Convert BOM data to Part data format
+    const partData = {
+      title: bomData.description,
+      description: bomData.description,
+      stage: bomData.stage,
+      level: 'ASSEMBLY',
+      creator: bomData.creator
+    };
+    return this.createPart(partData);
   }
 
   async updateBom(id, bomData) {
-    try {
-      const response = await this.api.put(`/boms/${id}`, bomData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating BOM ${id}:`, error);
-      throw error;
-    }
+    const partData = {
+      title: bomData.description,
+      description: bomData.description,
+      stage: bomData.stage
+    };
+    return this.updatePart(id, partData);
   }
 
   async deleteBom(id) {
-    try {
-      await this.api.delete(`/boms/${id}`);
-      return true;
-    } catch (error) {
-      console.error(`Error deleting BOM ${id}:`, error);
-      throw error;
-    }
+    return this.deletePart(id);
   }
 
   async getBomHierarchy(id) {
-    try {
-      const response = await this.api.get(`/boms/${id}/hierarchy`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching BOM hierarchy ${id}:`, error);
-      throw error;
-    }
+    return this.getPartHierarchy(id);
   }
 
   async getAllParts() {
     try {
-      const response = await this.api.get('/parts');
+      const response = await this.api.get('/api/boms/parts');
       return response.data;
     } catch (error) {
       console.error('Error fetching parts:', error);
@@ -84,7 +55,7 @@ class BomService {
 
   async createPart(partData) {
     try {
-      const response = await this.api.post('/parts', partData);
+      const response = await this.api.post('/api/boms/parts', partData);
       return response.data;
     } catch (error) {
       console.error('Error creating part:', error);
@@ -94,7 +65,7 @@ class BomService {
 
   async updatePart(id, partData) {
     try {
-      const response = await this.api.put(`/parts/${id}`, partData);
+      const response = await this.api.put(`/api/boms/parts/${id}`, partData);
       return response.data;
     } catch (error) {
       console.error(`Error updating part ${id}:`, error);
@@ -104,7 +75,7 @@ class BomService {
 
   async deletePart(id) {
     try {
-      await this.api.delete(`/parts/${id}`);
+      await this.api.delete(`/api/boms/parts/${id}`);
       return true;
     } catch (error) {
       console.error(`Error deleting part ${id}:`, error);
@@ -114,7 +85,7 @@ class BomService {
 
   async getPartById(id) {
     try {
-      const response = await this.api.get(`/parts/${id}`);
+      const response = await this.api.get(`/api/boms/parts/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching part ${id}:`, error);
@@ -124,7 +95,7 @@ class BomService {
 
   async getPartHierarchy(id) {
     try {
-      const response = await this.api.get(`/parts/${id}/bom-hierarchy`);
+      const response = await this.api.get(`/api/boms/parts/${id}/bom-hierarchy`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching part hierarchy ${id}:`, error);
@@ -134,7 +105,7 @@ class BomService {
 
   async addPartUsage(parentPartId, childPartId, quantity) {
     try {
-      const response = await this.api.post('/parts/usage', {
+      const response = await this.api.post('/api/boms/parts/usage', {
         parentPartId,
         childPartId,
         quantity
@@ -148,7 +119,7 @@ class BomService {
 
   async removePartUsage(parentPartId, childPartId) {
     try {
-      await this.api.delete(`/parts/${parentPartId}/usage/${childPartId}`);
+      await this.api.delete(`/api/boms/parts/${parentPartId}/usage/${childPartId}`);
       return true;
     } catch (error) {
       console.error('Error removing part usage:', error);
@@ -158,7 +129,7 @@ class BomService {
 
   async getChildParts(parentPartId) {
     try {
-      const response = await this.api.get(`/parts/${parentPartId}/children`);
+      const response = await this.api.get(`/api/boms/parts/${parentPartId}/children`);
       return response.data;
     } catch (error) {
       console.error('Error getting child parts:', error);
@@ -166,15 +137,9 @@ class BomService {
     }
   }
 
-  // Legacy BOM methods - kept for backward compatibility during migration
+  // Legacy method redirected to part usage
   async addPartToBom(bomId, partUsageData) {
-    try {
-      const response = await this.api.post(`/boms/${bomId}/parts`, partUsageData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error adding part to BOM ${bomId}:`, error);
-      throw error;
-    }
+    return this.addPartUsage(bomId, partUsageData.childPartId, partUsageData.quantity);
   }
 }
 

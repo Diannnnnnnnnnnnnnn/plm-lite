@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Feign client for calling Graph Service to sync BOM data to Neo4j
  */
-@FeignClient(name = "graph-service", url = "http://localhost:8090", fallback = GraphServiceClientFallback.class)
+@FeignClient(name = "graph-service", fallback = GraphServiceClientFallback.class)
 public interface GraphServiceClient {
 
     @PostMapping("/api/graph/sync/part")

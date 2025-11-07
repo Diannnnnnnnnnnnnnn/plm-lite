@@ -1,20 +1,13 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8084/api';  // Change service port
+import apiClient from '../utils/apiClient';
 
 class ChangeService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.api = apiClient;
   }
 
   async getAllChanges() {
     try {
-      const response = await this.api.get('/changes');
+      const response = await this.api.get('/api/changes');
       return response.data;
     } catch (error) {
       console.error('Error fetching changes:', error);
@@ -24,7 +17,7 @@ class ChangeService {
 
   async getChangeById(id) {
     try {
-      const response = await this.api.get(`/changes/${id}`);
+      const response = await this.api.get(`/api/changes/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching change ${id}:`, error);
@@ -34,7 +27,7 @@ class ChangeService {
 
   async createChange(changeData) {
     try {
-      const response = await this.api.post('/changes', changeData);
+      const response = await this.api.post('/api/changes', changeData);
       return response.data;
     } catch (error) {
       console.error('Error creating change:', error);
@@ -42,39 +35,29 @@ class ChangeService {
     }
   }
 
-  async submitForReview(changeId, reviewData) {
+  async updateChange(id, changeData) {
     try {
-      const response = await this.api.put(`/changes/${changeId}/submit-review`, reviewData);
+      const response = await this.api.put(`/api/changes/${id}`, changeData);
       return response.data;
     } catch (error) {
-      console.error(`Error submitting change ${changeId} for review:`, error);
+      console.error(`Error updating change ${id}:`, error);
       throw error;
     }
   }
 
-  async approveChange(changeId) {
+  async deleteChange(id) {
     try {
-      const response = await this.api.put(`/changes/${changeId}/approve`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error approving change ${changeId}:`, error);
-      throw error;
-    }
-  }
-
-  async deleteChange(changeId) {
-    try {
-      await this.api.delete(`/changes/${changeId}`);
+      await this.api.delete(`/api/changes/${id}`);
       return true;
     } catch (error) {
-      console.error(`Error deleting change ${changeId}:`, error);
+      console.error(`Error deleting change ${id}:`, error);
       throw error;
     }
   }
 
   async getChangesByStatus(status) {
     try {
-      const response = await this.api.get(`/changes/status/${status}`);
+      const response = await this.api.get(`/api/changes?status=${status}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching changes by status ${status}:`, error);
@@ -82,111 +65,117 @@ class ChangeService {
     }
   }
 
-  async getChangesByCreator(creator) {
+  async submitChangeForApproval(id) {
     try {
-      const response = await this.api.get(`/changes/creator/${creator}`);
+      const response = await this.api.post(`/api/changes/${id}/submit`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching changes by creator ${creator}:`, error);
+      console.error(`Error submitting change ${id}:`, error);
       throw error;
     }
   }
 
-  async searchChanges(keyword) {
+  async approveChange(id, approverId) {
     try {
-      const response = await this.api.get(`/changes/search?keyword=${encodeURIComponent(keyword)}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error searching changes with keyword ${keyword}:`, error);
-      throw error;
-    }
-  }
-
-  async searchChangesElastic(query) {
-    try {
-      const response = await this.api.get(`/changes/search/elastic?query=${encodeURIComponent(query)}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error performing elastic search with query ${query}:`, error);
-      throw error;
-    }
-  }
-
-  // Helper method to get changes with advanced filtering
-  async getFilteredChanges(filters = {}) {
-    try {
-      let changes = await this.getAllChanges();
-
-      if (filters.status && filters.status !== 'All') {
-        changes = changes.filter(change => change.status === filters.status);
-      }
-
-      if (filters.stage && filters.stage !== 'All') {
-        changes = changes.filter(change => change.stage === filters.stage);
-      }
-
-      if (filters.changeClass && filters.changeClass !== 'All') {
-        changes = changes.filter(change => change.changeClass === filters.changeClass);
-      }
-
-      if (filters.creator) {
-        changes = changes.filter(change =>
-          change.creator.toLowerCase().includes(filters.creator.toLowerCase())
-        );
-      }
-
-      if (filters.product) {
-        changes = changes.filter(change =>
-          change.product.toLowerCase().includes(filters.product.toLowerCase())
-        );
-      }
-
-      if (filters.searchTerm) {
-        const term = filters.searchTerm.toLowerCase();
-        changes = changes.filter(change =>
-          change.title.toLowerCase().includes(term) ||
-          change.product.toLowerCase().includes(term) ||
-          change.creator.toLowerCase().includes(term) ||
-          change.changeReason.toLowerCase().includes(term) ||
-          change.id.toLowerCase().includes(term)
-        );
-      }
-
-      return changes;
-    } catch (error) {
-      console.error('Error filtering changes:', error);
-      throw error;
-    }
-  }
-
-  // Helper method to get change statistics
-  async getChangeStatistics() {
-    try {
-      const changes = await this.getAllChanges();
-
-      const stats = {
-        total: changes.length,
-        byStatus: {},
-        byStage: {},
-        byClass: {},
-        recent: changes.filter(change => {
-          const createdDate = new Date(change.createTime);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return createdDate >= weekAgo;
-        }).length
-      };
-
-      // Calculate distribution by status
-      changes.forEach(change => {
-        stats.byStatus[change.status] = (stats.byStatus[change.status] || 0) + 1;
-        stats.byStage[change.stage] = (stats.byStage[change.stage] || 0) + 1;
-        stats.byClass[change.changeClass] = (stats.byClass[change.changeClass] || 0) + 1;
+      const response = await this.api.post(`/api/changes/${id}/approve`, {
+        approverId,
       });
-
-      return stats;
+      return response.data;
     } catch (error) {
-      console.error('Error calculating change statistics:', error);
+      console.error(`Error approving change ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async rejectChange(id, approverId, reason) {
+    try {
+      const response = await this.api.post(`/api/changes/${id}/reject`, {
+        approverId,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error rejecting change ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async implementChange(id) {
+    try {
+      const response = await this.api.post(`/api/changes/${id}/implement`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error implementing change ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getChangeHistory(id) {
+    try {
+      const response = await this.api.get(`/api/changes/${id}/history`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching change history ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getImpactedItems(id) {
+    try {
+      const response = await this.api.get(`/api/changes/${id}/impact`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching impacted items for change ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async addImpactedDocument(changeId, documentId) {
+    try {
+      const response = await this.api.post(`/api/changes/${changeId}/documents/${documentId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding document to change ${changeId}:`, error);
+      throw error;
+    }
+  }
+
+  async removeImpactedDocument(changeId, documentId) {
+    try {
+      await this.api.delete(`/api/changes/${changeId}/documents/${documentId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error removing document from change ${changeId}:`, error);
+      throw error;
+    }
+  }
+
+  async addImpactedPart(changeId, partId) {
+    try {
+      const response = await this.api.post(`/api/changes/${changeId}/parts/${partId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding part to change ${changeId}:`, error);
+      throw error;
+    }
+  }
+
+  async removeImpactedPart(changeId, partId) {
+    try {
+      await this.api.delete(`/api/changes/${changeId}/parts/${partId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error removing part from change ${changeId}:`, error);
+      throw error;
+    }
+  }
+
+  async searchChanges(searchParams) {
+    try {
+      const response = await this.api.post('/api/changes/search', searchParams);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching changes:', error);
       throw error;
     }
   }

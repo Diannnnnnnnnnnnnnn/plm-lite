@@ -11,7 +11,7 @@ import com.example.plm.workflow.dto.ApproveRejectRequest;
 /**
  * Feign Client for Document Service
  */
-@FeignClient(name = "document-service", url = "http://localhost:8081")
+@FeignClient(name = "document-service")
 public interface DocumentServiceClient {
     
     @PostMapping("/api/v1/documents/{id}/review-complete")

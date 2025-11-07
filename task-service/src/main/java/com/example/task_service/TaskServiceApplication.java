@@ -5,9 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication(
-    exclude = {
-        org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration.class
-    },
     scanBasePackages = {"com.example.task_service"}
 )
 @EnableFeignClients(basePackages = {"com.example.task_service"})

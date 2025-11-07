@@ -36,11 +36,12 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-    enabled: false  # Disable for standalone operation
-    register-with-eureka: false
-    fetch-registry: false
+    enabled: true
+    register-with-eureka: true
+    fetch-registry: true
   instance:
     prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
 # ===============================
 # Feign Client Configuration

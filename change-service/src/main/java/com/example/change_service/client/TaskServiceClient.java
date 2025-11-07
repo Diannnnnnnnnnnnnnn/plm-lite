@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "task-service", url = "http://localhost:8082")
+@FeignClient(name = "task-service")
 public interface TaskServiceClient {
 
     @PostMapping("/tasks")

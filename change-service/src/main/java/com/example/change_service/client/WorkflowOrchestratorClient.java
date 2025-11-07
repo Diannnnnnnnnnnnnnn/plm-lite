@@ -8,7 +8,7 @@ import java.util.Map;
  * Feign Client for Camunda Workflow Orchestrator
  * Communicates with workflow-orchestrator service for Change approval workflows
  */
-@FeignClient(name = "workflow-orchestrator", url = "http://localhost:8086")
+@FeignClient(name = "workflow-orchestrator")
 public interface WorkflowOrchestratorClient {
 
     /**

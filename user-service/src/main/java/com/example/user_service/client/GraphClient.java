@@ -2,7 +2,10 @@ package com.example.user_service.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * Feign client for calling graph-service to sync users to Neo4j.
@@ -10,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @FeignClient(
     name = "graph-service",
-    url = "${graph.service.url:http://localhost:8090}",
     fallback = GraphClientFallback.class
 )
 public interface GraphClient {
