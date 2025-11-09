@@ -75,6 +75,16 @@ class ChangeService {
     }
   }
 
+  async submitForReview(changeId, reviewPayload) {
+    try {
+      const response = await this.api.put(`/api/changes/${changeId}/submit-review`, reviewPayload);
+      return response.data;
+    } catch (error) {
+      console.error(`Error submitting change ${changeId} for review:`, error);
+      throw error;
+    }
+  }
+
   async approveChange(id, approverId) {
     try {
       const response = await this.api.post(`/api/changes/${id}/approve`, {

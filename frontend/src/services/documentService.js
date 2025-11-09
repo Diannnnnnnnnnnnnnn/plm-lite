@@ -82,7 +82,7 @@ class DocumentService {
         partId: documentData.relatedProduct || null  // Add Part ID (replaces bomId)
       };
 
-      const createResponse = await this.api.post('/documents', backendDocumentData);
+      const createResponse = await this.api.post('/api/documents', backendDocumentData);
       const document = createResponse.data;
 
       // Step 2: Upload the file to the created document

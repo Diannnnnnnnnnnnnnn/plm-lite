@@ -207,8 +207,8 @@ public class PartServiceImpl implements PartService {
         
         PartUsage savedUsage = partUsageRepository.save(partUsage);
         
-        // Sync to Neo4j
-        syncPartUsageToGraph(savedUsage);
+        // Sync to Neo4j - use IDs from request to avoid lazy loading issues
+        syncPartUsageToGraph(request.getParentPartId(), request.getChildPartId(), request.getQuantity());
         
         return savedUsage;
     }
@@ -266,8 +266,8 @@ public class PartServiceImpl implements PartService {
         
         DocumentPartLink savedLink = documentPartLinkRepository.save(link);
         
-        // Sync to Neo4j
-        syncPartDocumentLinkToGraph(savedLink);
+        // Sync to Neo4j - use IDs from request to avoid lazy loading issues
+        syncPartDocumentLinkToGraph(request.getPartId(), request.getDocumentId());
         
         return savedLink;
     }
@@ -370,12 +370,12 @@ public class PartServiceImpl implements PartService {
         }
     }
     
-    private void syncPartUsageToGraph(PartUsage partUsage) {
+    private void syncPartUsageToGraph(String parentPartId, String childPartId, Integer quantity) {
         try {
             PartUsageDto dto = new PartUsageDto(
-                partUsage.getParent().getId(),
-                partUsage.getChild().getId(),
-                partUsage.getQuantity()
+                parentPartId,
+                childPartId,
+                quantity
             );
             graphServiceClient.syncPartUsage(dto);
             log.info("✅ Part usage synced to graph successfully");
@@ -384,11 +384,11 @@ public class PartServiceImpl implements PartService {
         }
     }
     
-    private void syncPartDocumentLinkToGraph(DocumentPartLink link) {
+    private void syncPartDocumentLinkToGraph(String partId, String documentId) {
         try {
             PartDocumentLinkDto dto = new PartDocumentLinkDto(
-                link.getPart().getId(),
-                link.getDocumentId()
+                partId,
+                documentId
             );
             graphServiceClient.syncPartDocumentLink(dto);
             log.info("✅ Part-document link synced to graph successfully");

@@ -28,14 +28,35 @@ public class InternalAuthController {
      */
     @PostMapping("/verify")
     public ResponseEntity<UserDto> verify(@RequestBody LoginRequest login) {
-        User user = userService.findByUsername(login.getUsername());
-
-        if (user != null && userService.checkPassword(user, login.getPassword())) {
+        try {
+            System.out.println("[Auth Verify] Checking credentials for: " + login.getUsername());
+            
+            User user = userService.findByUsername(login.getUsername());
+            
+            if (user == null) {
+                System.out.println("[Auth Verify] User not found: " + login.getUsername());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            System.out.println("[Auth Verify] User found, checking password...");
+            
+            if (!userService.checkPassword(user, login.getPassword())) {
+                System.out.println("[Auth Verify] Invalid password for: " + login.getUsername());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            System.out.println("[Auth Verify] Password valid, creating DTO...");
+            
             // Convert to DTO (exclude password)
             UserDto dto = new UserDto(user.getId(), user.getUsername(), user.getRoles());
+            
+            System.out.println("[Auth Verify] DTO created successfully for: " + login.getUsername());
+            
             return ResponseEntity.ok(dto);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (Exception e) {
+            System.err.println("[Auth Verify] ERROR: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
     }
 }

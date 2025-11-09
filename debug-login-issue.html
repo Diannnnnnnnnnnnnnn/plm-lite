@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login Issue</title>
+</head>
+<body>
+    <h1>Login Debug Tool</h1>
+    <button onclick="clearStorage()">Clear LocalStorage</button>
+    <button onclick="checkStorage()">Check LocalStorage</button>
+    <button onclick="testLogin()">Test Login</button>
+    <pre id="output"></pre>
+
+    <script>
+        function log(msg) {
+            document.getElementById('output').textContent += msg + '\n';
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            log('✓ LocalStorage cleared');
+            checkStorage();
+        }
+
+        function checkStorage() {
+            log('\n--- LocalStorage Contents ---');
+            log('jwt_token: ' + (localStorage.getItem('jwt_token') || 'NONE'));
+            log('user: ' + (localStorage.getItem('user') || 'NONE'));
+        }
+
+        async function testLogin() {
+            log('\n--- Testing Login ---');
+            try {
+                const response = await fetch('http://localhost:8111/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'demo',
+                        password: 'demo'
+                    })
+                });
+
+                log('Status: ' + response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✓ Login successful!');
+                    log('Token: ' + data.token.substring(0, 50) + '...');
+                } else {
+                    const text = await response.text();
+                    log('✗ Login failed: ' + text);
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message);
+            }
+        }
+
+        // Check on load
+        checkStorage();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

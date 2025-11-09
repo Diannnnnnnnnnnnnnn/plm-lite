@@ -1,10 +1,11 @@
 package com.example.auth_service.userclient;
 
-import com.example.auth_service.dto.LoginRequest;
-import com.example.auth_service.dto.UserDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import com.example.auth_service.dto.LoginRequest;
+import com.example.auth_service.dto.UserDto;
 
 @FeignClient(name = "user-service")
 public interface UserClient {

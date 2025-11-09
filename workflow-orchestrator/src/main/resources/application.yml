@@ -56,6 +56,24 @@ eureka:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
+# Feign Client Configuration for Service-to-Service Communication
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000  # 10 seconds to establish connection
+        readTimeout: 30000     # 30 seconds to read response
+        loggerLevel: full
+      task-service:
+        connectTimeout: 15000  # Longer for task service (might have DB operations)
+        readTimeout: 45000
+      user-service:
+        connectTimeout: 10000
+        readTimeout: 30000
+      document-service:
+        connectTimeout: 10000
+        readTimeout: 30000
+
 ---
 spring:
   config:
@@ -77,3 +95,6 @@ logging:
     com.example.plm.workflow: DEBUG
     io.camunda.zeebe: INFO
     io.camunda: DEBUG
+    feign: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    com.example.plm.workflow.client: DEBUG

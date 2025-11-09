@@ -28,13 +28,19 @@ public class ChangeController {
     @PostMapping
     public ResponseEntity<ChangeResponse> createChange(@Valid @RequestBody CreateChangeRequest request) {
         try {
+            System.out.println("🟢 [Change Service] Received createChange request: " + request.getTitle());
             ChangeResponse response = changeServiceDev != null ?
                 changeServiceDev.createChange(request) :
                 changeService.createChange(request);
+            System.out.println("🟢 [Change Service] Successfully created change: " + response.getId());
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (IllegalStateException e) {
+            System.out.println("🔴 [Change Service] Validation error: " + e.getMessage());
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
+            System.out.println("🔴 [Change Service] Error creating change: " + e.getMessage());
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

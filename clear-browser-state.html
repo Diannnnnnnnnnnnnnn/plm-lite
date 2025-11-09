@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Browser State</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .info {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clear Browser State for PLM Lite</h1>
+    
+    <div class="info">
+        <p><strong>Current localStorage:</strong></p>
+        <pre id="storage">Loading...</pre>
+    </div>
+
+    <button class="button" onclick="clearEverything()">Clear All & Reload</button>
+
+    <div id="result"></div>
+
+    <script>
+        function showStorage() {
+            const storage = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                storage[key] = localStorage.getItem(key);
+            }
+            document.getElementById('storage').textContent = JSON.stringify(storage, null, 2);
+        }
+
+        function clearEverything() {
+            // Clear localStorage
+            localStorage.clear();
+            
+            // Clear sessionStorage
+            sessionStorage.clear();
+            
+            // Show success message
+            document.getElementById('result').innerHTML = '<p class="success">✓ Cleared localStorage and sessionStorage!</p><p>Redirecting to app in 2 seconds...</p>';
+            
+            // Redirect to app with cache-busting
+            setTimeout(() => {
+                window.location.href = 'http://localhost:8111/?t=' + Date.now();
+            }, 2000);
+        }
+
+        // Show current storage on load
+        showStorage();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

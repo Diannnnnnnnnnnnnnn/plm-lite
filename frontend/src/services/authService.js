@@ -3,6 +3,20 @@ import apiClient from '../utils/apiClient';
 class AuthService {
   async login(username, password) {
     try {
+      // Clear any existing token before attempting login
+      // Do this synchronously and wait a bit to ensure it's cleared
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('jwt_token');
+      sessionStorage.removeItem('user');
+      
+      // Small delay to ensure storage is cleared
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      console.log('[AuthService] Starting login for:', username);
+      console.log('[AuthService] Token cleared, localStorage token:', localStorage.getItem('jwt_token'));
+      
+      // Make login request (interceptor will ensure no Authorization header is sent)
       const response = await apiClient.post('/auth/login', {
         username,
         password,
@@ -33,15 +47,23 @@ class AuthService {
   }
 
   logout() {
+    const token = localStorage.getItem('jwt_token');
+    
+    // Call backend logout endpoint with token (for blacklisting)
+    // The interceptor will automatically add the Authorization header
+    if (token) {
+      try {
+        apiClient.post('/auth/logout').catch(() => {
+          // Ignore errors - we'll clear localStorage anyway
+        });
+      } catch (error) {
+        // Ignore errors - we'll clear localStorage anyway
+      }
+    }
+    
+    // Remove tokens from localStorage
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user');
-    
-    // Optional: Call backend logout endpoint
-    try {
-      apiClient.post('/auth/logout').catch(() => {});
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
   }
 
   getCurrentUser() {

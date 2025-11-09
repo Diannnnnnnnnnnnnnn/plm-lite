@@ -17,11 +17,34 @@ const apiClient = axios.create({
 // Request interceptor - Add JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('jwt_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Don't add Authorization header to login/register endpoints
+    const isAuthEndpoint = config.url && (
+      config.url.includes('/auth/login') || 
+      config.url.includes('/auth/register')
+    );
+    
+    if (!isAuthEndpoint) {
+      const token = localStorage.getItem('jwt_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log(`[API] Adding token to request: ${token.substring(0, 20)}...`);
+      }
+    } else {
+      // Explicitly remove Authorization header for auth endpoints
+      // Also check if it was set by default or previous interceptor
+      delete config.headers.Authorization;
+      delete config.headers.authorization; // lowercase variant
+      // Double-check localStorage is not being read
+      const token = localStorage.getItem('jwt_token');
+      if (token) {
+        console.warn(`[API] WARNING: Token exists in localStorage but should not be sent to auth endpoint: ${config.url}`);
+      }
+      console.log(`[API] Skipping token for auth endpoint: ${config.url}`);
+      console.log(`[API] Authorization header after removal:`, config.headers.Authorization);
     }
+    
     console.log(`[API] ${config.method.toUpperCase()} ${config.url}`);
+    console.log(`[API] Headers:`, config.headers);
     return config;
   },
   (error) => {
@@ -36,7 +59,13 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // Don't handle 401 errors for login/register endpoints - let the component handle it
+    const isAuthEndpoint = error.config && error.config.url && (
+      error.config.url.includes('/auth/login') || 
+      error.config.url.includes('/auth/register')
+    );
+    
+    if (error.response && error.response.status === 401 && !isAuthEndpoint) {
       console.log('[API] Unauthorized - redirecting to login');
       localStorage.removeItem('jwt_token');
       localStorage.removeItem('user');
@@ -50,4 +79,6 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+
 

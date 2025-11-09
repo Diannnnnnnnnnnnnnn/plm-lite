@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -53,8 +54,23 @@ public class JwtUtil {
      */
     @SuppressWarnings("unchecked")
     public List<String> getRoles(String token) {
-        Claims claims = parseToken(token);
-        return claims.get("roles", List.class);
+        try {
+            Claims claims = parseToken(token);
+            Object rolesObj = claims.get("roles");
+            if (rolesObj == null) {
+                // Try alternative claim names
+                rolesObj = claims.get("role");
+            }
+            if (rolesObj instanceof List) {
+                return (List<String>) rolesObj;
+            } else if (rolesObj instanceof String) {
+                return Arrays.asList((String) rolesObj);
+            }
+            return null;
+        } catch (Exception e) {
+            System.out.println("⚠️ [JwtUtil] Error extracting roles: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -69,4 +85,6 @@ public class JwtUtil {
         }
     }
 }
+
+
 

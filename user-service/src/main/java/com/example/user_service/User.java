@@ -2,6 +2,7 @@ package com.example.user_service;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -21,9 +22,11 @@ public final class User {
 
     private String username;
 
+    @JsonIgnore
     private String password;
 
-   // Internal JSON string storage
+   // Internal JSON string storage (not directly serialized)
+    @JsonIgnore
     private String roles;
 
     // Constructors
