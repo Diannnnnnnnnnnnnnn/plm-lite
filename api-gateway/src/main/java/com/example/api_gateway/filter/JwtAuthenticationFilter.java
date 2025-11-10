@@ -48,9 +48,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // Defensive bypass: Always skip JWT check for auth endpoints (login, register, refresh)
-        // This ensures auth endpoints are never blocked, even if path matching fails
-        if (path != null && (path.contains("/auth/login") || path.contains("/auth/register") || path.contains("/auth/refresh"))) {
+        // CRITICAL: Check for auth endpoints FIRST, before any token processing
+        // This ensures auth endpoints (login, register, refresh, logout) are NEVER blocked
+        // regardless of what token might be in the request
+        if (path != null && isAuthEndpoint(path)) {
             System.out.println("🟢 [Gateway] Skipping JWT check for auth endpoint: " + path);
             return chain.filter(exchange);
         }
@@ -139,6 +140,25 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return authHeader.substring(7);
         }
         return null;
+    }
+
+    /**
+     * Check if the path is an auth endpoint that should never require JWT validation
+     * This is checked FIRST before any token processing to ensure auth endpoints work
+     * even if invalid tokens are present in the request
+     */
+    private boolean isAuthEndpoint(String path) {
+        if (path == null || path.isEmpty()) {
+            return false;
+        }
+        // Normalize path - remove query parameters and convert to lowercase for comparison
+        String normalizedPath = path.split("\\?")[0].toLowerCase();
+        // Check for auth endpoints - login, register, refresh, logout, validate
+        return normalizedPath.contains("/auth/login") ||
+               normalizedPath.contains("/auth/register") ||
+               normalizedPath.contains("/auth/refresh") ||
+               normalizedPath.contains("/auth/logout") ||
+               normalizedPath.contains("/auth/validate");
     }
 
     /**

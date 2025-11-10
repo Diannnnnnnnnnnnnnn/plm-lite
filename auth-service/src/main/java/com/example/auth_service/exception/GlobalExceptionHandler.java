@@ -17,7 +17,21 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest req) {
-    ApiError err = new ApiError(500, "Internal Server Error", ex.getMessage(), req.getRequestURI());
+    System.err.println("[GlobalExceptionHandler] Handling exception: " + ex.getClass().getName());
+    System.err.println("[GlobalExceptionHandler] Message: " + ex.getMessage());
+    if (ex.getCause() != null) {
+      System.err.println("[GlobalExceptionHandler] Cause: " + ex.getCause().getClass().getName() + " - " + ex.getCause().getMessage());
+    }
+    ex.printStackTrace();
+    
+    // Provide more detailed error message
+    String errorMessage = ex.getMessage();
+    if (ex.getCause() != null && ex.getCause() instanceof feign.FeignException) {
+      feign.FeignException feignEx = (feign.FeignException) ex.getCause();
+      errorMessage = "User service unavailable (status: " + feignEx.status() + "): " + feignEx.getMessage();
+    }
+    
+    ApiError err = new ApiError(500, "Internal Server Error", errorMessage, req.getRequestURI());
     return ResponseEntity.status(500).body(err);
   }
 }

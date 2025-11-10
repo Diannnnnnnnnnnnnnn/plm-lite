@@ -24,7 +24,7 @@ public class GatewayConfig {
                 .route("user-service", r -> r
                         .path("/api/users", "/api/users/**")
                         .filters(f -> f.rewritePath("/api/users(?<segment>/.*)?", "/users${segment}"))
-                        .uri("lb://user-service"))
+                        .uri("http://localhost:8083"))
                 
                 // Task Service (direct mapping)
                 .route("task-service", r -> r
@@ -67,6 +67,8 @@ public class GatewayConfig {
                 .build();
     }
 }
+
+
 
 
 

@@ -55,8 +55,11 @@ public class InternalAuthController {
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
             System.err.println("[Auth Verify] ERROR: " + e.getMessage());
+            System.err.println("[Auth Verify] Exception type: " + e.getClass().getName());
             e.printStackTrace();
-            throw e;
+            // Return 500 instead of throwing to provide better error handling
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
         }
     }
 }

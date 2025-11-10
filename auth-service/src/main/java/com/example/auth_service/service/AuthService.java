@@ -1,16 +1,17 @@
 package com.example.auth_service.service;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Service;
+
 import com.example.auth_service.dto.JwtResponse;
 import com.example.auth_service.dto.LoginRequest;
 import com.example.auth_service.dto.RegisterRequest;
 import com.example.auth_service.dto.UserDto;
 import com.example.auth_service.security.JwtUtil;
 import com.example.auth_service.userclient.UserClient;
-import org.springframework.cache.CacheManager;
-import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 public class AuthService {
@@ -62,11 +63,14 @@ public class AuthService {
     } catch (feign.FeignException e) {
       System.err.println("[AuthService] Feign error: " + e.status() + " - " + e.getMessage());
       System.err.println("[AuthService] Response body: " + e.contentUTF8());
-      throw e;
+      // Wrap FeignException to provide better error message
+      throw new RuntimeException("Failed to connect to user service: " + e.getMessage(), e);
     } catch (Exception e) {
       System.err.println("[AuthService] Unexpected error during login: " + e.getMessage());
+      System.err.println("[AuthService] Exception type: " + e.getClass().getName());
       e.printStackTrace();
-      throw e;
+      // Wrap to ensure proper error handling
+      throw new RuntimeException("Login failed: " + e.getMessage(), e);
     }
   }
 

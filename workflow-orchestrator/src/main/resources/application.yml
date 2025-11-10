@@ -56,6 +56,10 @@ eureka:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
+# User Service Configuration
+user-service:
+  base-url: ${USER_SERVICE_BASE_URL:http://localhost:8083}
+
 # Feign Client Configuration for Service-to-Service Communication
 feign:
   client:

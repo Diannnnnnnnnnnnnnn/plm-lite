@@ -1,15 +1,17 @@
 package com.example.api_gateway.util;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 /**
  * JWT Utility for parsing and validating JWT tokens
@@ -43,10 +45,20 @@ public class JwtUtil {
 
     /**
      * Extract user ID from token
+     * Supports both "uid" (used by auth-service) and "userId" (legacy)
      */
     public String getUserId(String token) {
         Claims claims = parseToken(token);
-        return claims.get("userId", String.class);
+        // Try "uid" first (as used by auth-service), then fallback to "userId"
+        Object uidObj = claims.get("uid");
+        if (uidObj != null) {
+            return String.valueOf(uidObj);
+        }
+        Object userIdObj = claims.get("userId");
+        if (userIdObj != null) {
+            return String.valueOf(userIdObj);
+        }
+        return null;
     }
 
     /**
@@ -61,10 +73,10 @@ public class JwtUtil {
                 // Try alternative claim names
                 rolesObj = claims.get("role");
             }
-            if (rolesObj instanceof List) {
-                return (List<String>) rolesObj;
-            } else if (rolesObj instanceof String) {
-                return Arrays.asList((String) rolesObj);
+            if (rolesObj instanceof List<?> list) {
+                return (List<String>) list;
+            } else if (rolesObj instanceof String str) {
+                return Arrays.asList(str);
             }
             return null;
         } catch (Exception e) {

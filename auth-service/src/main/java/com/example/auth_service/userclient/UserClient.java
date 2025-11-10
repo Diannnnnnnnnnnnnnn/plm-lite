@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import com.example.auth_service.dto.LoginRequest;
 import com.example.auth_service.dto.UserDto;
 
-@FeignClient(name = "user-service")
+@FeignClient(name = "user-service", url = "${user-service.base-url:http://localhost:8083}")
 public interface UserClient {
 
   @PostMapping("/internal/auth/verify")

@@ -9,7 +9,7 @@ import com.example.plm.workflow.dto.UserResponse;
 /**
  * Feign Client for User Service
  */
-@FeignClient(name = "user-service")
+@FeignClient(name = "user-service", url = "${user-service.base-url:http://localhost:8083}")
 public interface UserServiceClient {
     
     @GetMapping("/users/{id}")

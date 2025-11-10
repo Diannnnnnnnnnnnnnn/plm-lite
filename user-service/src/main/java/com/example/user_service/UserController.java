@@ -1,6 +1,7 @@
 package com.example.user_service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,8 +26,19 @@ public class UserController {
     private UserService userService;
 
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            List<User> users = userService.getAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            System.err.println("Error fetching users: " + e.getMessage());
+            // Log full stack trace for debugging
+            if (System.getProperty("debug") != null) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch users", "message", e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")
