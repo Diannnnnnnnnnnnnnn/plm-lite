@@ -6,6 +6,10 @@ spring:
   cloud:
     compatibility-verifier:
       enabled: false
+  # Disable RestTemplate observation to avoid circular dependency with Eureka
+  observation:
+    resttemplate:
+      enabled: false
 
 server:
   port: 8086
@@ -52,9 +56,23 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    # Make Eureka initialization non-blocking
+    initial-instance-info-replication-interval-seconds: 5
+    instance-info-replication-interval-seconds: 30
+    eureka-service-url-poll-interval-seconds: 10
+    registry-fetch-interval-seconds: 30
+    # Don't fail startup if Eureka is unavailable
+    healthcheck:
+      enabled: true
+    # Don't block on initial fetch failure
+    should-on-demand-update-status-change: true
+    should-enforce-registration-at-init: false
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    # Lease renewal settings
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
 
 # User Service Configuration
 user-service:

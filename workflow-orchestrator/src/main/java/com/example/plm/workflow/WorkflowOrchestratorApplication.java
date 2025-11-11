@@ -4,10 +4,10 @@ package com.example.plm.workflow;
 // import io.camunda.zeebe.spring.client.annotation.Deployment;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.annotation.Profile;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {RestClientAutoConfiguration.class})
 @EnableFeignClients
 // Commented out @Deployment for simplified dev mode
 // @Deployment(resources = "classpath*:bpmn/*.bpmn")

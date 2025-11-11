@@ -28,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +42,7 @@ public class PartServiceImpl implements PartService {
     private final DocumentPartLinkRepository documentPartLinkRepository;
     private final GraphServiceClient graphServiceClient;
     private final PartSearchService partSearchService;
+    private final Executor graphSyncExecutor = Executors.newFixedThreadPool(5);
 
     public PartServiceImpl(PartRepository partRepository, 
                           PartUsageRepository partUsageRepository,
@@ -68,8 +72,8 @@ public class PartServiceImpl implements PartService {
         
         Part savedPart = partRepository.save(part);
         
-        // Sync to Neo4j
-        syncPartToGraph(savedPart);
+        // Sync to Neo4j asynchronously (non-blocking)
+        syncPartToGraphAsync(savedPart);
         
         // Index to Elasticsearch
         try {
@@ -131,15 +135,7 @@ public class PartServiceImpl implements PartService {
     public void deletePart(String id) {
         Part part = getPartById(id);
         
-        // Check if part is used in any BOM structures
-        List<PartUsage> parentUsages = partUsageRepository.findByChildId(id);
-        List<PartUsage> childUsages = partUsageRepository.findByParentId(id);
-        
-        if (!parentUsages.isEmpty() || !childUsages.isEmpty()) {
-            throw new ValidationException("Cannot delete part that is used in BOM structures. Use soft delete instead.");
-        }
-        
-        // Soft delete
+        // Soft delete - allow deletion even if part is used in BOM structures
         part.setDeleted(true);
         part.setDeleteTime(java.time.LocalDateTime.now());
         Part deletedPart = partRepository.save(part);
@@ -207,8 +203,8 @@ public class PartServiceImpl implements PartService {
         
         PartUsage savedUsage = partUsageRepository.save(partUsage);
         
-        // Sync to Neo4j - use IDs from request to avoid lazy loading issues
-        syncPartUsageToGraph(request.getParentPartId(), request.getChildPartId(), request.getQuantity());
+        // Sync to Neo4j asynchronously - use IDs from request to avoid lazy loading issues
+        syncPartUsageToGraphAsync(request.getParentPartId(), request.getChildPartId(), request.getQuantity());
         
         return savedUsage;
     }
@@ -266,8 +262,8 @@ public class PartServiceImpl implements PartService {
         
         DocumentPartLink savedLink = documentPartLinkRepository.save(link);
         
-        // Sync to Neo4j - use IDs from request to avoid lazy loading issues
-        syncPartDocumentLinkToGraph(request.getPartId(), request.getDocumentId());
+        // Sync to Neo4j asynchronously - use IDs from request to avoid lazy loading issues
+        syncPartDocumentLinkToGraphAsync(request.getPartId(), request.getDocumentId());
         
         return savedLink;
     }
@@ -351,6 +347,19 @@ public class PartServiceImpl implements PartService {
     // Graph Sync Methods
     // ==========================================
     
+    /**
+     * Sync part to graph asynchronously (non-blocking)
+     * This prevents graph sync delays from blocking the main createPart response
+     */
+    private void syncPartToGraphAsync(Part part) {
+        CompletableFuture.runAsync(() -> {
+            syncPartToGraph(part);
+        }, graphSyncExecutor).exceptionally(ex -> {
+            log.error("❌ Exception in async graph sync for part {}: {}", part.getId(), ex.getMessage());
+            return null;
+        });
+    }
+    
     private void syncPartToGraph(Part part) {
         try {
             PartSyncDto dto = new PartSyncDto(
@@ -370,6 +379,19 @@ public class PartServiceImpl implements PartService {
         }
     }
     
+    /**
+     * Sync part usage to graph asynchronously (non-blocking)
+     */
+    private void syncPartUsageToGraphAsync(String parentPartId, String childPartId, Integer quantity) {
+        CompletableFuture.runAsync(() -> {
+            syncPartUsageToGraph(parentPartId, childPartId, quantity);
+        }, graphSyncExecutor).exceptionally(ex -> {
+            log.error("❌ Exception in async graph sync for part usage {} -> {}: {}", 
+                parentPartId, childPartId, ex.getMessage());
+            return null;
+        });
+    }
+    
     private void syncPartUsageToGraph(String parentPartId, String childPartId, Integer quantity) {
         try {
             PartUsageDto dto = new PartUsageDto(
@@ -382,6 +404,19 @@ public class PartServiceImpl implements PartService {
         } catch (Exception e) {
             log.warn("⚠️ Failed to sync part usage to graph: {}", e.getMessage());
         }
+    }
+    
+    /**
+     * Sync part-document link to graph asynchronously (non-blocking)
+     */
+    private void syncPartDocumentLinkToGraphAsync(String partId, String documentId) {
+        CompletableFuture.runAsync(() -> {
+            syncPartDocumentLinkToGraph(partId, documentId);
+        }, graphSyncExecutor).exceptionally(ex -> {
+            log.error("❌ Exception in async graph sync for part-document link {} -> {}: {}", 
+                partId, documentId, ex.getMessage());
+            return null;
+        });
     }
     
     private void syncPartDocumentLinkToGraph(String partId, String documentId) {

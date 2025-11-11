@@ -56,7 +56,7 @@ feign:
       graph-service:
         url: http://localhost:8090
         connect-timeout: 10000
-        read-timeout: 10000
+        read-timeout: 20000  # Increased from 10000 to 20000 (20 seconds) to handle slow graph sync
         logger-level: full
 
 # ===============================
